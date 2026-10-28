@@ -318,7 +318,7 @@ textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
     <button data-pan="-1,0" aria-label="화면 왼쪽으로 이동" title="왼쪽으로 이동 (←)"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
     <button class="home" id="bHome" aria-label="지금 단계의 처음 시점으로" title="처음 시점 (0)">처음<br>시점</button>
     <button data-pan="1,0" aria-label="화면 오른쪽으로 이동" title="오른쪽으로 이동 (→)"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-    <span></span>
+    <button id="bFront" class="home" aria-label="정면에서 크게 보기" title="정면 확대 (F) · 보고 싶은 곳을 두 번 눌러도 돼요">정면<br>확대</button>
     <button data-tilt="1" aria-label="정면에서 바라보기" title="정면에서 보기 (↓)"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
     <span></span>
   </div>
@@ -1509,6 +1509,62 @@ function frame(){
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+/* ================= front view: button, double-tap zoom, magnetic snap ================= */
+function frontView(target, dist, topDown){
+  const t = target.clone();
+  const d = dist ?? clamp(camera.position.distanceTo(controls.target), 1.6, 2.8);
+  const el = topDown ? 1.05 : 0.2;
+  const pos = V(t.x, t.y + Math.sin(el)*d, t.z + Math.cos(el)*d);
+  tween = { t:0, dur: RM ? 0.01 : 0.9, p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:t };
+  S.userCam = true;
+  if (typeof stopPlay === 'function') stopPlay();
+}
+function snapAzimuth(){
+  if (tween) return;
+  const off = camera.position.clone().sub(controls.target), sph = new THREE.Spherical().setFromVector3(off);
+  if (Math.abs(sph.theta) < 0.35 && Math.abs(sph.theta) > 0.002){
+    sph.theta = 0;
+    const p1 = controls.target.clone().add(new THREE.Vector3().setFromSpherical(sph));
+    tween = { t:0, dur: RM ? 0.01 : 0.45, p0:camera.position.clone(), t0:controls.target.clone(), p1, t1:controls.target.clone() };
+  }
+}
+let camTurned = false;
+{
+  const mc = moveCamera;
+  moveCamera = (a, b, c) => { if (a) camTurned = true; mc(a, b, c); };
+  const settle = () => { if (camTurned){ camTurned = false; setTimeout(snapAzimuth, 60); } };
+  addEventListener('pointerup', settle, true);
+  addEventListener('keyup', settle, true);
+  controls.addEventListener('start', () => { camTurned = true; });
+  controls.addEventListener('end', () => setTimeout(settle, 250));
+}
+$('#bFront').onclick = () => frontView(controls.target.clone());
+addEventListener('keydown', e => {
+  const sh = $('#sheet'); if ((sh && !sh.hidden) || (e.target.closest && e.target.closest('button,textarea,input'))) return;
+  if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') frontView(controls.target.clone());
+});
+{
+  const zray = new THREE.Raycaster(), zndc = new THREE.Vector2();
+  function zoomAt(cx, cy){
+    const r = canvas.getBoundingClientRect();
+    zndc.set(((cx - r.left)/r.width)*2 - 1, -((cy - r.top)/r.height)*2 + 1);
+    zray.setFromCamera(zndc, camera);
+    const hit = zray.intersectObjects(book.children, true).find(h => h.object.isMesh && h.object.visible);
+    if (!hit) return;
+    const onPage = hit.object === pageL.mesh || hit.object === pageR.mesh;
+    if (onPage) frontView(hit.point, 1.9, true);
+    else frontView(hit.point, 1.5);
+  }
+  canvas.addEventListener('dblclick', e => zoomAt(e.clientX, e.clientY));
+  let lastTap = null;
+  canvas.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse') return;
+    const now = performance.now();
+    if (lastTap && now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30){ lastTap = null; zoomAt(e.clientX, e.clientY); }
+    else lastTap = { t:now, x:e.clientX, y:e.clientY };
+  });
+}
+
 (async () => {
   try {
     await Promise.race([
