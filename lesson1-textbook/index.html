@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>섞으면 어떻게 될까?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<style>
+/* Layout: one full-bleed 3D desk scene; a paper progress chip pinned top-left and a tour bar pinned bottom-centre */
+:root{
+  --desk:#e6dfd2;
+  --hud-bg:rgba(251,249,244,.92);
+  --hud-fg:#2a2833;
+  --hud-mute:#6f6a78;
+  --hud-line:rgba(42,40,51,.15);
+  --accent:#d9572f;
+  --co2:#2f7dff;
+  --tag-bg:#fbf8f0;
+  --tag-fg:#2a2833;
+  --tag-line:#2a2833;
+  --f-ui:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"Nanum Pen Script","Gaegu","Apple SD Gothic Neo",cursive;
+  --f-serif:"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk:#1d1c21; --hud-bg:rgba(34,33,40,.92); --hud-fg:#efebe3; --hud-mute:#aaa4b3;
+    --hud-line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#1d1c21; --hud-bg:rgba(34,33,40,.92); --hud-fg:#efebe3; --hud-mute:#aaa4b3;
+  --hud-line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark;
+}
+html,body{height:100%}
+body{
+  background:var(--desk); color:var(--hud-fg); font-family:var(--f-ui);
+  overflow:hidden; -webkit-tap-highlight-color:transparent;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+#c{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; outline:none}
+
+/* progress chip */
+#chip{
+  position:fixed; top:calc(12px + env(safe-area-inset-top,0px)); left:max(16px, env(safe-area-inset-left,0px));
+  display:flex; flex-direction:column; gap:6px; padding:10px 14px 11px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:14px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); max-width:calc(100% - 32px);
+}
+#chip .eyebrow{font-size:12px; color:var(--hud-mute); letter-spacing:.04em}
+#chip .name{font-family:var(--f-serif); font-weight:700; font-size:15px; text-wrap:balance}
+#steps{display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 0; padding:0; list-style:none}
+#steps li{
+  font-size:12px; padding:3px 9px 3px 7px; border-radius:999px; border:1px dashed var(--hud-line);
+  color:var(--hud-mute); display:flex; align-items:center; gap:5px; transition:all .3s;
+}
+#steps li::before{content:""; width:8px; height:8px; border-radius:50%; border:1.5px solid currentColor}
+#steps li.on{border-style:solid; border-color:var(--accent); color:var(--accent)}
+#steps li.on::before{background:var(--accent)}
+
+/* tour bar */
+#bar{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  width:min(780px, calc(100% - 32px));
+  display:flex; align-items:center; gap:4px; padding:6px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:999px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+}
+#bar button{
+  flex:none; width:40px; height:40px; border-radius:50%; border:0; background:transparent;
+  color:var(--hud-fg); display:grid; place-items:center; cursor:pointer;
+}
+#bar button:hover{background:var(--hud-line)}
+#bar button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+#bar svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+#cap{flex:1; min-width:0; padding:0 8px; display:flex; flex-direction:column; gap:3px}
+#capText{font-size:14px; line-height:1.35; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+#dots{display:flex; gap:5px}
+#dots button{width:18px!important; height:10px!important; border-radius:6px!important; padding:0; position:relative}
+#dots button::after{content:""; position:absolute; inset:3px 4px; border-radius:3px; background:var(--hud-line)}
+#dots button.on::after{background:var(--accent)}
+#dots button:hover{background:transparent!important}
+.sep{width:1px; height:24px; background:var(--hud-line); flex:none; margin:0 2px}
+#bar button.off{opacity:.45}
+@media (max-width:560px){
+  #bar{flex-wrap:wrap; border-radius:20px; justify-content:center}
+  #cap{order:-1; flex-basis:100%; padding:4px 8px 2px}
+  .sep{display:none}
+}
+
+/* camera pad */
+#pad{
+  position:fixed; right:max(16px, env(safe-area-inset-right,0px));
+  bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  display:flex; gap:8px; align-items:flex-end; padding:8px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:18px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  touch-action:none; user-select:none; -webkit-user-select:none;
+}
+#pad .dpad{display:grid; grid-template-columns:repeat(3,44px); grid-template-rows:repeat(3,44px); gap:4px}
+#pad .zoom{display:grid; grid-template-rows:repeat(2,44px); gap:4px}
+#pad button{
+  width:44px; height:44px; border-radius:12px; border:1px solid var(--hud-line); background:transparent;
+  color:var(--hud-fg); display:grid; place-items:center; cursor:pointer; padding:0;
+}
+#pad button:hover{background:var(--hud-line)}
+#pad button:active,#pad button.held{background:var(--accent); color:#fff; border-color:var(--accent)}
+#pad button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+#pad svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+#pad .home{font-size:11px; line-height:1.1; font-family:var(--f-ui)}
+@media (max-width:560px){
+  #pad{bottom:calc(132px + env(safe-area-inset-bottom,0px)); padding:6px; gap:6px}
+  #pad .dpad{grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px)}
+  #pad .zoom{grid-template-rows:repeat(2,38px)}
+  #pad button{width:38px; height:38px}
+}
+
+/* scene labels */
+#labels{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+.tag{
+  position:absolute; left:0; top:0; white-space:nowrap;
+  font-family:var(--f-hand); font-size:24px; line-height:1; color:var(--tag-fg);
+  background:var(--tag-bg); border:1.5px solid var(--tag-line); border-radius:7px; padding:4px 10px 3px;
+  opacity:0; transition:opacity .35s;
+  box-shadow:2px 3px 0 rgba(42,40,51,.18);
+}
+.tag::after{content:""; position:absolute; left:50%; top:100%; width:1.5px; height:18px; background:var(--tag-line)}
+.tag.show{opacity:1}
+.tag.blue{color:#1f5fd1; border-color:#1f5fd1}
+.tag.blue::after{background:#1f5fd1}
+
+#toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  top:calc(16px + env(safe-area-inset-top,0px));
+  background:var(--hud-fg); color:var(--desk); padding:9px 16px; border-radius:10px; font-size:14px;
+  max-width:calc(100% - 32px); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none;
+}
+#toast.show{opacity:1}
+@media (max-width:760px){ #toast{top:auto; bottom:calc(118px + env(safe-area-inset-bottom,0px))} }
+
+#veil{
+  position:fixed; inset:0; display:grid; place-items:center; background:var(--desk);
+  font-family:var(--f-serif); font-size:18px; color:var(--hud-mute); transition:opacity .6s;
+}
+#veil.gone{opacity:0; pointer-events:none}
+@media (prefers-reduced-motion: reduce){ .tag,#toast,#veil,#steps li{transition:none} }
+</style>
+
+</head>
+<body>
+<a href="../" style="position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));z-index:30;font:13px 'Gowun Dodum',sans-serif;background:rgba(251,249,244,.92);color:#2a2833;border:1px solid rgba(42,40,51,.15);border-radius:999px;padding:8px 14px;text-decoration:none">← 목차</a>
+<canvas id="c" tabindex="0" aria-label="펼쳐진 과학책 위의 3D 실험 장면"></canvas>
+<div id="labels" aria-hidden="true"></div>
+
+<section id="chip" aria-label="진행 상황">
+  <span class="eyebrow">과학 6-2 · 물질의 변화 · 탐구 1</span>
+  <span class="name">서로 다른 물질을 섞으면 어떻게 될까?</span>
+  <ol id="steps">
+    <li data-k="pred">예상</li><li data-k="exp">실험</li><li data-k="flap">정답</li><li data-k="quiz">확인</li>
+  </ol>
+</section>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<nav id="bar" aria-label="둘러보기">
+  <button id="bPrev" aria-label="이전 장면"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button id="bPlay" aria-label="자동 둘러보기"><svg viewBox="0 0 24 24" id="playIco"><path d="M8 5v14l11-7z"/></svg></button>
+  <div id="cap"><span id="capText"></span><div id="dots"></div></div>
+  <button id="bNext" aria-label="다음 장면"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  <span class="sep"></span>
+  <button id="bSound" aria-label="소리 끄기"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg></button>
+  <button id="bReset" aria-label="처음부터 다시 하기"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7"/><path d="M4 4v4h4"/></svg></button>
+</nav>
+
+<section id="pad" aria-label="시점 조절">
+  <div class="dpad">
+    <button data-spin="-1" aria-label="책 왼쪽으로 돌리기" title="왼쪽으로 돌리기 (Q)"><svg viewBox="0 0 24 24"><path d="M5 9a8 8 0 0114 1"/><path d="M5 4v5h5"/><path d="M8 17h8"/></svg></button>
+    <button data-tilt="-1" aria-label="위에서 내려다보기" title="위에서 보기 (↑)"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    <button data-spin="1" aria-label="책 오른쪽으로 돌리기" title="오른쪽으로 돌리기 (E)"><svg viewBox="0 0 24 24"><path d="M19 9a8 8 0 00-14 1"/><path d="M19 4v5h-5"/><path d="M8 17h8"/></svg></button>
+    <button data-pan="-1,0" aria-label="화면 왼쪽으로 이동" title="왼쪽으로 이동 (←)"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+    <button class="home" id="bHome" aria-label="지금 장면의 처음 시점으로" title="처음 시점 (0)">처음<br>시점</button>
+    <button data-pan="1,0" aria-label="화면 오른쪽으로 이동" title="오른쪽으로 이동 (→)"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <span></span>
+    <button data-tilt="1" aria-label="정면에서 바라보기" title="정면에서 보기 (↓)"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+    <span></span>
+  </div>
+  <div class="zoom">
+    <button data-zoom="-1" aria-label="확대" title="확대 (+)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg></button>
+    <button data-zoom="1" aria-label="축소" title="축소 (-)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/></svg></button>
+  </div>
+</section>
+
+<div id="veil">책을 펼치는 중…</div>
+
+<script>
+(function(){
+  function showVeil(html){
+    var v = document.getElementById('veil'); if (!v) return;
+    v.classList.remove('gone');
+    v.innerHTML = '<div style="max-width:36ch;text-align:center;line-height:1.7;padding:0 16px">' + html + '</div>';
+  }
+  window.__showVeil = showVeil;
+  setTimeout(function(){
+    if (!window.__bookReady) showVeil('3D 그림을 불러오지 못했어요.<br>페이지를 새로고침해 보세요.<br><small>학교 인터넷에서 cdn.jsdelivr.net 접속이 막혀 있으면 책이 보이지 않을 수 있어요.</small>');
+  }, 15000);
+  window.addEventListener('error', function(e){
+    if (!window.__bookReady) showVeil('3D 그림을 여는 중에 문제가 생겼어요.<br>새로고침해 보세요.<br><small>' + String(e.message || '').slice(0, 120) + '</small>');
+  });
+})();
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+/* ---------- small helpers ---------- */
+const $ = s => document.querySelector(s);
+const clamp = (x,a,b) => Math.min(b, Math.max(a, x));
+const lerp = (a,b,t) => a + (b-a)*t;
+const smooth = (a,b,x) => { const t = clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+const easeIO = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const easeOut = t => 1 - Math.pow(1-t,3);
+const easeBack = t => { const c1=1.4, c3=c1+1; return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2); };
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V = (x,y,z) => new THREE.Vector3(x,y,z);
+
+const COL = { ink:'#2a2833', paper:'#f8f5ee', accent:'#d9572f', accentSoft:'#fbe3d5', mute:'#7a7482', co2:'#2f7dff', ok:'#2e7d55' };
+const F = {
+  serif:'"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif',
+  sans:'"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  hand:'"Nanum Pen Script","Gaegu","Apple SD Gothic Neo",cursive'
+};
+const INK = new THREE.Color(COL.ink);
+
+/* ---------- renderer ---------- */
+const canvas = $('#c');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+} catch (e) {
+  $('#veil').textContent = '이 기기에서는 3D 그래픽을 켤 수 없어요. 브라우저의 하드웨어 가속을 켜 주세요.';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e4dccd');
+scene.fog = new THREE.Fog('#e4dccd', 10, 22);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 80);
+camera.position.set(0.2, 7.5, 6.5);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.0; controls.maxDistance = 11; controls.maxPolarAngle = 1.36;
+controls.screenSpacePanning = false; controls.panSpeed = 1.1;
+controls.mouseButtons = { LEFT:-1, MIDDLE:THREE.MOUSE.DOLLY, RIGHT:THREE.MOUSE.ROTATE };
+controls.touches = { ONE:-1, TWO:THREE.TOUCH.DOLLY_ROTATE };
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); window.__showVeil && window.__showVeil('그래픽이 잠시 멈췄어요.<br>페이지를 새로고침해 주세요.'); });
+controls.target.set(0.1, 0.3, 0.2);
+
+scene.add(new THREE.HemisphereLight(0xfff8ee, 0xb7aa98, 1.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.55);
+sun.position.set(-3.4, 6.8, 4.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-4, right:4, top:4, bottom:-4, near:1, far:18 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+/* ---------- ink-hatching material ---------- */
+const BEND_GLSL = `
+uniform float uBend; uniform float uNeck; uniform float uLen; uniform float uRad; uniform float uFlat; uniform float uArc;
+void bendIt(inout vec3 p, inout vec3 n){
+  float t = p.y;
+  float bf = smoothstep(0.10, 0.26, t);
+  float rs = mix(1.0, uRad, bf);
+  float fs = mix(1.0, uFlat, bf);
+  p.x *= rs; p.z *= rs*fs;
+  n = normalize(vec3(n.x/max(rs,0.01), n.y/max(uLen,0.01), n.z/max(rs*fs,0.01)));
+  float L = t*uLen;
+  float s = max(L-uNeck, 0.0);
+  float sa = min(s, uArc);
+  float a = uBend*sa;
+  float c = cos(a); float sn = sin(a);
+  vec3 sp = vec3(0.0, L, 0.0);
+  if (abs(uBend) > 1e-4) sp = vec3(-(1.0-c)/uBend, min(L,uNeck) + sn/uBend, 0.0) + vec3(-sn, c, 0.0)*(s - sa);
+  p = sp + vec3(c, sn, 0.0)*p.x + vec3(0.0, 0.0, p.z);
+  n = vec3(n.x*c - n.y*sn, n.x*sn + n.y*c, n.z);
+}
+`;
+const HATCH_UNI = `
+uniform vec3 uInk; uniform float uDensity; uniform vec3 uDir1; uniform vec3 uDir2;
+uniform float uMode; uniform float uRadius; uniform float uHatch;
+varying vec3 vHObj;
+`;
+const HATCH_OUT = `
+float hLum = dot(outgoingLight, vec3(0.3333));
+float hBase = max(dot(diffuseColor.rgb, vec3(0.3333)), 0.03);
+float hShade = clamp(hLum / hBase, 0.0, 1.3);
+float hDark = clamp(1.0 - hShade, 0.0, 1.0);
+float hu1 = (uMode < 0.5 ? dot(vHObj, uDir1) : atan(vHObj.z, vHObj.x) * uRadius) * uDensity;
+float ha1 = fwidth(hu1);
+float hd1 = abs(fract(hu1) - 0.5);
+float hw1 = 0.5 * mix(0.10, 0.66, hDark);
+float hl1 = 1.0 - smoothstep(hw1 - ha1, hw1 + ha1, hd1);
+hl1 *= 1.0 - smoothstep(0.22, 0.65, ha1);
+float hu2 = dot(vHObj, uDir2) * uDensity * 1.15;
+float ha2 = fwidth(hu2);
+float hd2 = abs(fract(hu2) - 0.5);
+float hw2 = 0.5 * 0.55 * smoothstep(0.40, 0.95, hDark);
+float hl2 = (1.0 - smoothstep(hw2 - ha2, hw2 + ha2, hd2)) * step(0.004, hw2);
+hl2 *= 1.0 - smoothstep(0.22, 0.65, ha2);
+float hInk = max(hl1, hl2) * uHatch;
+vec3 hCol = mix(diffuseColor.rgb * mix(0.84, 1.02, clamp(hShade, 0.0, 1.0)), outgoingLight, 0.32);
+gl_FragColor = vec4(mix(hCol, uInk, hInk * 0.82), diffuseColor.a);
+`;
+function hatchMat(o){
+  const m = new THREE.MeshLambertMaterial({ color:o.color, transparent:!!o.transparent, map:o.map||null });
+  const u = {
+    uInk:{value:INK}, uDensity:{value:o.density ?? 40},
+    uDir1:{value:V(...(o.dir1||[1,0,0.4])).normalize()},
+    uDir2:{value:V(...(o.dir2||[0,1,0.3])).normalize()},
+    uMode:{value:o.cyl?1:0}, uRadius:{value:o.radius ?? 0.3}, uHatch:{value:o.amount ?? 1}
+  };
+  if (o.bend) Object.assign(u, o.bend);
+  m.userData.u = u;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    let vs = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vHObj;\n' + (o.bend ? BEND_GLSL : ''));
+    if (o.bend){
+      vs = vs.replace('#include <beginnormal_vertex>',
+        'vec3 objectNormal = vec3(normal);\nvec3 bentPos = vec3(position);\nbendIt(bentPos, objectNormal);\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3(tangent.xyz);\n#endif')
+        .replace('#include <begin_vertex>', 'vec3 transformed = bentPos;\nvHObj = vec3(position.x*uRad, position.y*uLen, position.z*uRad);');
+    } else {
+      vs = vs.replace('#include <begin_vertex>', '#include <begin_vertex>\nvHObj = transformed;');
+    }
+    sh.vertexShader = vs;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + HATCH_UNI)
+      .replace('#include <opaque_fragment>', HATCH_OUT);
+  };
+  m.customProgramCacheKey = () => 'hatch' + (o.bend ? 'B' : '');
+  return m;
+}
+function bendDepth(U){
+  const m = new THREE.MeshDepthMaterial({ depthPacking:THREE.RGBADepthPacking });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + BEND_GLSL)
+      .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position);\nvec3 bnT = vec3(normal);\nbendIt(transformed, bnT);');
+  };
+  m.customProgramCacheKey = () => 'bendDepth';
+  return m;
+}
+function hullMat(U){
+  return new THREE.ShaderMaterial({
+    uniforms:{ ...U, uOut:{value:0.0075}, uInk:{value:INK} },
+    side:THREE.BackSide,
+    vertexShader: BEND_GLSL + `
+uniform float uOut;
+void main(){ vec3 p = position; vec3 n = normal; bendIt(p, n); p += normalize(n)*uOut;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+    fragmentShader:`
+uniform vec3 uInk;
+void main(){ gl_FragColor = vec4(uInk, 1.0);
+#include <colorspace_fragment>
+}`
+  });
+}
+const lineMats = [];
+function inkEdges(geo, width=1.5, thresh=25){
+  const lg = new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(geo, thresh));
+  const lm = new LineMaterial({ color:INK.getHex(), linewidth:width });
+  lm.resolution.set(innerWidth, innerHeight);
+  lineMats.push(lm);
+  return new LineSegments2(lg, lm);
+}
+function ringLines(rings, width=1.3){
+  const pts = [];
+  for (const [r, y] of rings){ const n = 72; for (let i=0;i<n;i++){ const a0 = i/n*Math.PI*2, a1 = (i+1)/n*Math.PI*2; pts.push(Math.sin(a0)*r, y, Math.cos(a0)*r, Math.sin(a1)*r, y, Math.cos(a1)*r); } }
+  const lg = new LineSegmentsGeometry().setPositions(pts);
+  const lm = new LineMaterial({ color:INK.getHex(), linewidth:width }); lm.resolution.set(innerWidth, innerHeight); lineMats.push(lm);
+  return new LineSegments2(lg, lm);
+}
+function withEdges(mesh, width, thresh){ mesh.add(inkEdges(mesh.geometry, width, thresh)); return mesh; }
+
+/* fresnel glass, liquid, bubbles, CO2 ribbon */
+const FRES_VS = `varying vec3 vN; varying vec3 vV; varying float vNy;
+void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); vNy = normal.y; gl_Position = projectionMatrix*mv; }`;
+function glassMat(){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uInk:{value:INK}, uTint:{value:new THREE.Color('#dde8ec')} },
+    transparent:true, depthWrite:false, side:THREE.DoubleSide,
+    vertexShader:FRES_VS,
+    fragmentShader:`uniform vec3 uInk; uniform vec3 uTint; varying vec3 vN; varying vec3 vV; varying float vNy;
+void main(){ vec3 n = normalize(vN); float f = 1.0 - abs(dot(n, normalize(vV)));
+  float rim = smoothstep(0.62, 0.97, f);
+  float glint = smoothstep(0.045, 0.0, abs(n.x - 0.55)) * 0.22;
+  vec3 c = mix(uTint, uInk, rim*0.9); c = mix(c, vec3(1.0), glint);
+  gl_FragColor = vec4(c, 0.06 + 0.8*rim + glint*0.5);
+#include <colorspace_fragment>
+}`
+  });
+}
+function liquidMat(){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uInk:{value:INK}, uCol:{value:new THREE.Color('#e2b84c')}, uCloudCol:{value:new THREE.Color('#f1ede2')}, uCloud:{value:0} },
+    transparent:true, depthWrite:false,
+    vertexShader:FRES_VS,
+    fragmentShader:`uniform vec3 uInk; uniform vec3 uCol; uniform vec3 uCloudCol; uniform float uCloud;
+varying vec3 vN; varying vec3 vV; varying float vNy;
+void main(){ float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  vec3 c = mix(uCol, uCloudCol, uCloud);
+  c *= mix(1.0, 1.1, smoothstep(0.6, 0.95, vNy));
+  float rim = smoothstep(0.75, 0.98, f);
+  c = mix(c, uInk, rim*0.55);
+  gl_FragColor = vec4(c, mix(0.55, 0.8, uCloud) + 0.25*rim);
+#include <colorspace_fragment>
+}`
+  });
+}
+const bubbleMat = new THREE.ShaderMaterial({
+  uniforms:{ uInk:{value:INK} }, transparent:true, depthWrite:false,
+  vertexShader:`varying vec3 vN; varying vec3 vV;
+void main(){ vec4 mv = modelViewMatrix * instanceMatrix * vec4(position,1.0);
+  vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+  fragmentShader:`uniform vec3 uInk; varying vec3 vN; varying vec3 vV;
+void main(){ vec3 n = normalize(vN); float f = 1.0 - abs(dot(n, normalize(vV)));
+  float rim = smoothstep(0.45, 0.95, f);
+  float spec = smoothstep(0.82, 0.98, dot(n, normalize(vec3(-0.4,0.6,0.7))));
+  vec3 c = mix(vec3(1.0), uInk, rim*0.85); c = mix(c, vec3(1.0), spec);
+  gl_FragColor = vec4(c, 0.22 + 0.7*rim + spec*0.6);
+#include <colorspace_fragment>
+}`
+});
+function ribbonMat(){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uTime:{value:0}, uOp:{value:0}, uCol:{value:new THREE.Color(COL.co2)} },
+    transparent:true, depthWrite:false,
+    vertexShader:`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`uniform float uTime; uniform float uOp; uniform vec3 uCol; varying vec2 vUv;
+void main(){ float flow = fract(vUv.x*7.0 - uTime*1.3);
+  float dots = smoothstep(0.16, 0.0, abs(flow - 0.5));
+  float edge = smoothstep(0.0, 0.06, vUv.x) * smoothstep(1.0, 0.86, vUv.x);
+  vec3 c = mix(uCol, vec3(0.85, 0.95, 1.0), dots*0.7);
+  gl_FragColor = vec4(c, uOp * edge * (0.55 + 0.45*dots));
+#include <colorspace_fragment>
+}`
+  });
+}
+
+/* ---------- canvas textures ---------- */
+function makeCanvas(w,h){
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = ANISO;
+  return { cv, ctx, tex, w, h };
+}
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function wrap(c, text, maxW){
+  const out = []; let line = '';
+  for (const w of text.split(' ')){
+    const t = line ? line + ' ' + w : w;
+    if (c.measureText(t).width > maxW && line){ out.push(line); line = w; } else line = t;
+  }
+  if (line) out.push(line);
+  return out;
+}
+function seeded(seed){ let s = seed; return () => (s = (s*16807) % 2147483647) / 2147483647; }
+function paperBg(c, W, H, side){
+  c.fillStyle = COL.paper; c.fillRect(0,0,W,H);
+  const rnd = seeded(side<0?7:11);
+  for (let i=0;i<2600;i++){ c.fillStyle = `rgba(90,70,50,${0.02+rnd()*0.03})`; c.fillRect(rnd()*W, rnd()*H, 1.5+rnd()*2, 1.5+rnd()*2); }
+  const g = side<0 ? c.createLinearGradient(W-170,0,W,0) : c.createLinearGradient(170,0,0,0);
+  g.addColorStop(0,'rgba(70,55,40,0)'); g.addColorStop(1,'rgba(70,55,40,0.2)');
+  c.fillStyle = g; c.fillRect(0,0,W,H);
+}
+function dotTexture(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d');
+  c.beginPath(); c.arc(32,32,24,0,Math.PI*2); c.fillStyle = '#ffffff'; c.fill();
+  c.lineWidth = 7; c.strokeStyle = COL.ink; c.stroke();
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/* ---------- desk, mat, book ---------- */
+const PAGE_W = 2.1, PAGE_H = 3.0, PAGE_Y = 0.219;
+{
+  const d = makeCanvas(1024,1024), c = d.ctx;
+  c.fillStyle = '#d3bd9c'; c.fillRect(0,0,1024,1024);
+  const rnd = seeded(3);
+  for (let i=0;i<170;i++){
+    const y0 = rnd()*1024, amp = 4+rnd()*10, ph = rnd()*6;
+    c.strokeStyle = `rgba(140,105,70,${0.05+rnd()*0.12})`; c.lineWidth = 1+rnd()*3; c.beginPath();
+    for (let x=0;x<=1024;x+=16){ const y = y0 + Math.sin(x/120+ph)*amp; x?c.lineTo(x,y):c.moveTo(x,y); }
+    c.stroke();
+  }
+  d.tex.wrapS = d.tex.wrapT = THREE.RepeatWrapping; d.tex.repeat.set(3,3);
+  const desk = new THREE.Mesh(new THREE.PlaneGeometry(26,26), new THREE.MeshLambertMaterial({ map:d.tex }));
+  desk.rotation.x = -Math.PI/2; desk.receiveShadow = true; scene.add(desk);
+
+  const m = makeCanvas(512,512), mc = m.ctx;
+  mc.fillStyle = '#a6bbae'; mc.fillRect(0,0,512,512);
+  mc.strokeStyle = 'rgba(255,255,255,0.22)'; mc.lineWidth = 2;
+  for (let i=0;i<=512;i+=64){ mc.beginPath(); mc.moveTo(i,0); mc.lineTo(i,512); mc.moveTo(0,i); mc.lineTo(512,i); mc.stroke(); }
+  m.tex.wrapS = m.tex.wrapT = THREE.RepeatWrapping; m.tex.repeat.set(7,5);
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(7.2,0.02,5.0), new THREE.MeshLambertMaterial({ map:m.tex }));
+  mat.position.set(0.15,0.01,0.1); mat.rotation.y = 0.035; mat.receiveShadow = true; scene.add(mat);
+}
+const book = new THREE.Group(); scene.add(book);
+{
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(4.36,0.045,3.16), hatchMat({ color:'#d7a33a', dir1:[1,0,1], density:60, amount:.6 }));
+  cover.position.y = 0.02 + 0.0225; cover.castShadow = cover.receiveShadow = true; book.add(withEdges(cover, 1.4));
+  for (const s of [-1,1]){
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(1.82,0.152,3.02), hatchMat({ color:'#f1ece2', dir1:[0,1,0], density:150, amount:.7 }));
+    blk.position.set(s*1.19, 0.065+0.076, 0); blk.castShadow = blk.receiveShadow = true; book.add(withEdges(blk, 1.2));
+  }
+  const fill = new THREE.Mesh(new THREE.BoxGeometry(0.58,0.09,3.0), new THREE.MeshLambertMaterial({ color:'#d9d3c7' }));
+  fill.position.y = 0.065+0.045; book.add(fill);
+  const rib = new THREE.Mesh(new THREE.BoxGeometry(0.07,0.004,0.6), new THREE.MeshLambertMaterial({ color:'#2f3a66' }));
+  rib.position.set(0.03, 0.03, 1.72); rib.rotation.y = 0.12; book.add(rib);
+}
+function makePage(side){
+  const g = new THREE.PlaneGeometry(PAGE_W, PAGE_H, 64, 1); g.rotateX(-Math.PI/2);
+  const pos = g.attributes.position;
+  for (let i=0;i<pos.count;i++){
+    const x = pos.getX(i); const d = side<0 ? (PAGE_W/2 - x) : (x + PAGE_W/2);
+    const k = 1 - smooth(0, 0.28, d); pos.setY(i, -0.06*k*k);
+  }
+  g.computeVertexNormals();
+  const cnv = makeCanvas(1400, 2000);
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map:cnv.tex }));
+  mesh.position.set(side*PAGE_W/2, PAGE_Y, 0); mesh.receiveShadow = true;
+  book.add(mesh);
+  return { side, mesh, cnv, hits:[] };
+}
+const pageL = makePage(-1), pageR = makePage(1);
+const pageToWorld = (side, cx, cy) => V(side*PAGE_W/2 + (cx/1400 - 0.5)*PAGE_W, PAGE_Y, (cy/2000 - 0.5)*PAGE_H);
+
+/* ---------- apparatus (pops up from the right page) ---------- */
+const app = new THREE.Group(); book.add(app);
+const BOARD_TOP = PAGE_Y + 0.063;
+{
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.72,0.06,1.2), hatchMat({ color:'#ece2cf', dir1:[1,0,0.35], density:55, amount:.8 }));
+  board.position.set(1.19, PAGE_Y+0.033, 0.03); board.castShadow = board.receiveShadow = true; app.add(withEdges(board, 1.6));
+}
+const FILL = 0.25, MOUTH_Y = 1.04, BAL_Y = MOUTH_Y - 0.035;
+const rIn = y => y < 0.07 ? 0.343 : y < 0.80 ? lerp(0.343, 0.088, (y-0.07)/0.73) : 0.086;
+const FLASK_PROFILE = [[0,0],[0.33,0],[0.355,0.012],[0.36,0.04],[0.356,0.07],[0.105,0.80],[0.098,0.83],[0.098,1.0],[0.113,1.008],[0.116,1.03],[0.104,1.04],[0.092,1.036]];
+const flaskGeo = new THREE.LatheGeometry(FLASK_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 56);
+const LIQ_PROFILE = [[0,0.012],[0.33,0.012],[rIn(0.04),0.04],[rIn(0.07),0.07],[rIn(FILL),FILL],[0,FILL]];
+const liqGeo = new THREE.LatheGeometry(LIQ_PROFILE.map(p=>new THREE.Vector2(p[0]-0.004,p[1])), 56);
+
+function labelPlane(text, w, h, px){
+  const cnv = makeCanvas(256, 128); const c = cnv.ctx;
+  c.fillStyle = COL.ink; c.font = `400 ${px}px ${F.serif}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 128, 66);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({ map:cnv.tex, transparent:true, depthWrite:false }));
+  m.renderOrder = 6; return m;
+}
+function makeFlask(x){
+  const g = new THREE.Group(); g.position.set(x, BOARD_TOP, -0.1); app.add(g);
+  const glass = new THREE.Mesh(flaskGeo, glassMat()); glass.renderOrder = 5; g.add(glass);
+  glass.add(ringLines([[0.335,0.002],[0.358,0.06],[0.101,0.815],[0.114,1.006],[0.112,1.036]], 1.3));
+  const liq = new THREE.Mesh(liqGeo, liquidMat()); liq.renderOrder = 1; g.add(liq);
+  liq.add(ringLines([[rIn(FILL)-0.004, FILL]], 1.1));
+  // graduation marks
+  const marks = [[0.16,'100'],[0.27,'150'],[0.38,'200'],[0.49,'250']];
+  for (const [y,t] of marks){
+    const r = lerp(0.356, 0.105, (y-0.07)/0.73) + 0.004;
+    const pts = []; for (let a=-0.22;a<=0.08;a+=0.03) pts.push(V(Math.sin(a)*r, y, Math.cos(a)*r));
+    const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color:INK }));
+    g.add(ln);
+    const lab = labelPlane(t, 0.12, 0.06, 64);
+    const a = -0.38; lab.position.set(Math.sin(a)*(r+0.01), y, Math.cos(a)*(r+0.01));
+    lab.rotation.order = 'YXZ'; lab.rotation.y = a; lab.rotation.x = -0.38; g.add(lab);
+  }
+  // invisible hit proxy for tapping the flask/balloon
+  const proxy = new THREE.Mesh(new THREE.BoxGeometry(0.84, 1.9, 0.84), new THREE.MeshBasicMaterial({ transparent:true, opacity:0, depthWrite:false, colorWrite:false }));
+  proxy.position.y = 0.95; g.add(proxy);
+  return { g, glass, liq, proxy };
+}
+
+/* balloon: one lathe, bent and inflated in the vertex shader */
+const BAL_PROFILE = [[0.122,0],[0.129,0.012],[0.123,0.025],[0.114,0.03],[0.112,0.09],[0.092,0.14],[0.086,0.17],[0.16,0.24],[0.25,0.34],[0.305,0.46],[0.318,0.56],[0.30,0.67],[0.25,0.77],[0.17,0.86],[0.08,0.925],[0.02,0.945],[0,0.95]];
+const balGeo = new THREE.LatheGeometry(BAL_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 44);
+function profileR(t){
+  for (let i=1;i<BAL_PROFILE.length;i++){ const a = BAL_PROFILE[i-1], b = BAL_PROFILE[i];
+    if (t <= b[1]) return a[0] + (b[0]-a[0]) * (t-a[1]) / Math.max(b[1]-a[1], 1e-6); }
+  return 0;
+}
+const LIMP = { bend:11.0, len:0.8, rad:0.56, flat:0.34 };
+function makeBalloon(flask, flip){
+  const U = { uBend:{value:LIMP.bend}, uNeck:{value:0.14}, uArc:{value:0.25}, uLen:{value:LIMP.len}, uRad:{value:LIMP.rad}, uFlat:{value:LIMP.flat} };
+  const mat = hatchMat({ color:'#d63a40', bend:U, cyl:true, radius:0.3, density:44, dir2:[0,1,0.25], transparent:true });
+  const mesh = new THREE.Mesh(balGeo, mat); mesh.castShadow = true; mesh.customDepthMaterial = bendDepth(U);
+  mesh.renderOrder = 3; mesh.frustumCulled = false;
+  const hull = new THREE.Mesh(balGeo, hullMat(U)); hull.frustumCulled = false;
+  const g = new THREE.Group(); g.position.y = BAL_Y; g.rotation.y = flip ? Math.PI : 0; g.add(mesh, hull);
+  flask.g.add(g);
+  return { U, mat, mesh, hull, g, flip };
+}
+const _bp = new THREE.Vector3();
+function bendPoint(U, px, t, pz, out){
+  const bf = smooth(0.10, 0.26, t), rs = lerp(1, U.uRad.value, bf), fs = lerp(1, U.uFlat.value, bf);
+  const x = px*rs, z = pz*rs*fs, L = t*U.uLen.value, k = U.uBend.value;
+  const sl = Math.max(L - U.uNeck.value, 0), sa = Math.min(sl, U.uArc.value);
+  const a = k * sa, c = Math.cos(a), s = Math.sin(a);
+  let sx = 0, sy = L;
+  if (Math.abs(k) > 1e-4){ sx = -(1-c)/k - s*(sl-sa); sy = Math.min(L, U.uNeck.value) + s/k + c*(sl-sa); }
+  return out.set(sx + c*x, sy + s*x, z);
+}
+function balloonLocal(b, t, out){ // point on the balloon axis, in flask-local space
+  bendPoint(b.U, 0, t, 0, out);
+  if (b.flip){ out.x = -out.x; out.z = -out.z; }
+  out.y += BAL_Y; return out;
+}
+
+const fL = makeFlask(0.8), fR = makeFlask(1.6);
+const bL = makeBalloon(fL, false), bR = makeBalloon(fR, true);
+
+/* powder inside the balloons */
+const DOT = dotTexture();
+function makePowder(flask, bal, color){
+  const N = 150, pos = new Float32Array(N*3), P = [];
+  const rnd = seeded(flask === fL ? 5 : 9);
+  for (let i=0;i<N;i++) P.push({ t:lerp(0.6,0.86,rnd()), a:rnd()*6.283, r:Math.sqrt(rnd()), delay:rnd()*0.9, ph:0, x:0,y:0,z:0, vy:0, fx:0,fy:0,fz:0, life:0, done:false });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size:0.045, map:DOT, alphaTest:0.5, color }));
+  pts.frustumCulled = false; flask.g.add(pts);
+  return { N, pos, P, geo, bal, hits:0, settled:0 };
+}
+const powL = makePowder(fL, bL, '#fffdf6'), powR = makePowder(fR, bR, '#ffffff');
+
+/* flour sediment */
+const sediment = new THREE.Mesh(
+  new THREE.LatheGeometry([[0,0],[0.3,0],[0.325,0.006],[0.2,0.03],[0,0.04]].map(p=>new THREE.Vector2(p[0],p[1])), 40),
+  hatchMat({ color:'#faf7ee', dir1:[1,0,0.2], density:90, amount:.7 }));
+sediment.position.y = 0.012; sediment.scale.y = 0.001; sediment.visible = false; fL.g.add(sediment);
+
+/* bubbles + foam + CO2 ribbon + glow for the baking-soda flask */
+const NB = 160, bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8), bubbleMat, NB);
+bubbles.renderOrder = 2; bubbles.frustumCulled = false; fR.g.add(bubbles);
+const B = Array.from({length:NB}, () => ({ on:false, x:0,y:0,z:0, s:0, v:0, ph:Math.random()*6 }));
+const FOAM_MAX = 0.24;
+const foamCol = new THREE.Mesh(new THREE.CylinderGeometry(rIn(FILL+FOAM_MAX)-0.075, rIn(FILL)-0.06, FOAM_MAX, 48, 1, false).translate(0, FOAM_MAX/2, 0),
+  hatchMat({ color:'#f3efe3', dir1:[1,0.35,1], density:40, amount:.45 }));
+foamCol.position.y = FILL; foamCol.visible = false; fR.g.add(foamCol);
+const NF = 240, foamBits = new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8), hatchMat({ color:'#fbf9f2', dir1:[1,1,0], density:34, amount:.7 }), NF);
+foamBits.frustumCulled = false; foamBits.visible = false; fR.g.add(foamBits);
+const FB = Array.from({length:NF}, (_,i) => { const r = seeded(100+i); const side = i % 2 === 0; return { a:r()*6.283, rf: side ? 1 : Math.sqrt(r()), layer: side ? r() : 1, sz:r(), ph:r()*6 }; });
+const ribbonCurve = new THREE.CatmullRomCurve3([V(0,FILL+0.02,0), V(0.035,0.45,0.02), V(-0.025,0.72,-0.01), V(0,0.96,0), V(0.012,1.22,0), V(0,1.58,0)]);
+const ribbon = new THREE.Mesh(new THREE.TubeGeometry(ribbonCurve, 80, 0.032, 10, false), ribbonMat());
+ribbon.renderOrder = 4; ribbon.visible = false; fR.g.add(ribbon);
+const glow = new THREE.PointLight(0x3d8bff, 0, 1.9, 1.6); glow.position.set(0, 0.32, 0.06); fR.g.add(glow);
+
+/* result cards */
+function makeCard(x, title){
+  const cnv = makeCanvas(640, 384);
+  const paper = new THREE.MeshLambertMaterial({ color:'#f4efe4' });
+  const face = new THREE.MeshLambertMaterial({ map:cnv.tex });
+  const W = 0.5, H = 0.3;
+  const geo = new THREE.BoxGeometry(W, H, 0.008).translate(0, H/2, 0);
+  const card = new THREE.Mesh(geo, [paper,paper,paper,paper,face,paper]);
+  card.castShadow = true; card.rotation.x = -0.55; withEdges(card, 1.3);
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(0.34,0.035,0.09), hatchMat({ color:'#e8dcc6', density:60 }));
+  foot.position.set(0, 0.0175, 0.02); foot.castShadow = true; withEdges(foot, 1.2);
+  const g = new THREE.Group(); g.position.set(x, BOARD_TOP, 0.5); g.add(card, foot); app.add(g);
+  return { cnv, title, rows:[], meter:0, level:'' };
+}
+const cardL = makeCard(0.8, '밀가루 + 식초');
+const cardR = makeCard(1.6, '탄산수소 나트륨 + 식초');
+function drawCard(cd){
+  const { ctx:c, w, h } = cd.cnv;
+  c.fillStyle = '#fbf8ef'; c.fillRect(0,0,w,h);
+  c.strokeStyle = COL.ink; c.lineWidth = 6; c.strokeRect(12,12,w-24,h-24);
+  c.setLineDash([10,8]); c.lineWidth = 2; c.strokeRect(26,26,w-52,h-52); c.setLineDash([]);
+  c.fillStyle = COL.ink; c.font = `700 ${cd.title.length > 10 ? 36 : 42}px ${F.serif}`; c.textBaseline = 'alphabetic';
+  c.fillText(cd.title, 46, 86);
+  let y = 156;
+  for (const [k,v] of cd.rows){
+    c.fillStyle = COL.mute; c.font = `400 28px ${F.sans}`; c.fillText(k, 46, y);
+    c.fillStyle = COL.ink; c.font = `400 54px ${F.hand}`; c.fillText(v, 136, y+4); y += 70;
+  }
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.sans}`; c.fillText('기체', 46, 314);
+  c.strokeStyle = COL.ink; c.lineWidth = 3; rr(c,136,286,300,36,8); c.stroke();
+  if (cd.meter > 0.01){ c.fillStyle = COL.co2; rr(c,140,290,292*cd.meter,28,6); c.fill(); }
+  c.fillStyle = cd.meter > 0.3 ? '#1f5fd1' : COL.ink; c.font = `400 48px ${F.hand}`; c.fillText(cd.level, 456, 320);
+  cd.cnv.tex.needsUpdate = true;
+}
+
+/* ---------- state ---------- */
+const OPTIONS = ['① 두 풍선 모두 부풀어요', '② 밀가루 쪽만 부풀어요', '③ 탄산수소 나트륨 쪽만 부풀어요', '④ 두 풍선 모두 그대로예요'];
+const ANSWER = 2;
+const S = {
+  pred:null, phase:'idle', tR:0, tau:-1, gas:0, inflate:0, emit:0, foam:0, cloud:0, flop:0,
+  flapOpen:false, flapT:0, quiz:null, stampT:-1, xrayUser:false, xray:false, xrayK:0,
+  spawnAcc:0, cardTimer:0, doneT:0, userCam:false, cues:{}
+};
+
+/* ---------- left page ---------- */
+let FLAP_RECT = null, STAMP_AT = null;
+function drawLeft(){
+  const P = pageL, c = P.cnv.ctx, W = 1400, H = 2000; P.hits = [];
+  paperBg(c, W, H, -1);
+  const mL = 110, mR = 190, cw = W - mL - mR;
+  c.textBaseline = 'alphabetic';
+  c.fillStyle = COL.mute; c.font = `400 26px ${F.sans}`; c.fillText('2. 물질의 변화', mL, 92);
+  c.textAlign = 'right'; c.fillText('과학 6-2', W - mR, 92); c.textAlign = 'left';
+  c.strokeStyle = 'rgba(42,40,51,.18)'; c.lineWidth = 2; c.beginPath(); c.moveTo(mL,112); c.lineTo(W-mR,112); c.stroke();
+
+  c.fillStyle = COL.accent; c.font = `700 190px ${F.serif}`; c.fillText('1', mL - 6, 350);
+  c.fillStyle = COL.ink; c.font = `700 64px ${F.serif}`;
+  c.fillText('서로 다른 물질을', mL + 128, 246); c.fillText('섞으면 어떻게 될까?', mL + 128, 326);
+  STAMP_AT = { x: 1060, y: 236 };
+
+  let y = 432;
+  c.font = `400 35px ${F.serif}`; c.fillStyle = COL.ink;
+  for (const ln of wrap(c, '코코아 가루를 우유에 타도 코코아와 우유는 제 성질을 그대로 지닙니다. 그렇다면 서로 다른 물질을 섞을 때마다 늘 그럴까요? 두 가지 가루를 식초에 넣어 보며 물질의 성질이 어떻게 되는지 살펴봅시다.', cw)){ c.fillText(ln, mL, y); y += 56; }
+
+  y += 26;
+  c.fillStyle = COL.accent; rr(c, mL, y, 118, 58, 29); c.fill();
+  c.fillStyle = '#fff'; c.font = `700 32px ${F.serif}`; c.fillText('탐구', mL + 27, y + 41);
+  c.fillStyle = COL.ink; c.font = `700 38px ${F.serif}`; c.fillText('가루 물질을 식초에 넣었을 때의 변화', mL + 140, y + 43);
+  c.strokeStyle = COL.accent; c.lineWidth = 3; c.beginPath(); c.moveTo(mL, y + 76); c.lineTo(W - mR, y + 76); c.stroke();
+  y += 130;
+
+  c.fillStyle = '#ebe6dc'; rr(c, mL, y - 34, 112, 46, 10); c.fill();
+  c.fillStyle = COL.ink; c.font = `700 26px ${F.sans}`; c.fillText('준비물', mL + 18, y - 2);
+  c.font = `400 29px ${F.serif}`;
+  for (const ln of wrap(c, '밀가루, 탄산수소 나트륨, 식초가 든 삼각 플라스크 2개, 고무풍선 2개, 깔때기 2개, 약숟가락 2개, 실험복·보안경·실험용 장갑', cw - 136)){ c.fillText(ln, mL + 136, y); y += 44; }
+  y += 30;
+
+  c.strokeStyle = COL.accent; c.lineWidth = 2.5; rr(c, mL, y - 34, 132, 46, 10); c.stroke();
+  c.fillStyle = COL.accent; c.font = `700 26px ${F.sans}`; c.fillText('실험해요', mL + 18, y - 2);
+  y += 52;
+  const steps = [
+    '풍선 하나에는 밀가루, 다른 하나에는 탄산수소 나트륨을 두 숟가락씩 넣어요.',
+    '가루가 쏟아지지 않게 풍선을 식초가 든 플라스크 입구에 씌워요.',
+    '두 풍선을 동시에 세워 가루를 식초 속으로 떨어뜨려요.',
+    '풍선과 플라스크 안에서 일어나는 변화를 관찰해요.'
+  ];
+  steps.forEach((s, i) => {
+    c.fillStyle = COL.accent; c.font = `700 32px ${F.serif}`; c.fillText(String(i+1), mL + 4, y);
+    c.fillStyle = COL.ink; c.font = `400 31px ${F.serif}`;
+    for (const ln of wrap(c, s, cw - 50)){ c.fillText(ln, mL + 46, y); y += 46; }
+    y += 8;
+  });
+  y += 18;
+
+  // prediction box
+  const boxH = 250;
+  c.fillStyle = COL.accentSoft; rr(c, mL, y, cw, boxH, 22); c.fill();
+  c.fillStyle = COL.ink; c.font = `700 32px ${F.serif}`; c.fillText('예상해요', mL + 28, y + 54);
+  c.font = `400 30px ${F.serif}`; c.fillText('풍선을 세우면 어떻게 될까요?', mL + 186, y + 54);
+  if (S.pred === null){ c.fillStyle = COL.accent; c.font = `400 40px ${F.hand}`; c.textAlign = 'right'; c.fillText('하나를 골라요!', W - mR - 26, y + 56); c.textAlign = 'left'; }
+  const ow = (cw - 56 - 16)/2, oh = 70;
+  OPTIONS.forEach((t, i) => {
+    const ox = mL + 28 + (i%2)*(ow + 16), oy = y + 82 + Math.floor(i/2)*(oh + 12);
+    const sel = S.pred === i, reveal = S.flapOpen && i === ANSWER;
+    c.fillStyle = sel ? '#fff' : 'rgba(255,255,255,.55)'; rr(c, ox, oy, ow, oh, 14); c.fill();
+    c.strokeStyle = sel ? COL.accent : 'rgba(42,40,51,.22)'; c.lineWidth = sel ? 4 : 2; rr(c, ox, oy, ow, oh, 14); c.stroke();
+    c.strokeStyle = COL.ink; c.lineWidth = 3; c.strokeRect(ox + 18, oy + 20, 30, 30);
+    if (sel){ c.strokeStyle = COL.accent; c.lineWidth = 6; c.beginPath(); c.moveTo(ox+20, oy+34); c.lineTo(ox+32, oy+48); c.lineTo(ox+54, oy+14); c.stroke(); }
+    c.fillStyle = COL.ink; c.font = `400 27px ${F.serif}`; c.fillText(t, ox + 62, oy + 45);
+    if (reveal){ c.strokeStyle = COL.ok; c.lineWidth = 3; c.beginPath(); c.ellipse(ox + ow/2 + 20, oy + oh/2, ow/2 + 4, oh/2 + 8, -0.02, 0, Math.PI*2); c.stroke(); }
+    P.hits.push({ x:ox, y:oy, w:ow, h:oh, on:() => choosePrediction(i) });
+  });
+  y += boxH + 22;
+
+  // answer area, hidden under the 3D flap until it is lifted
+  const fh = 196;
+  FLAP_RECT = { x:mL, y, w:cw, h:fh };
+  c.strokeStyle = 'rgba(46,125,85,.5)'; c.lineWidth = 2; rr(c, mL, y, cw, fh, 16); c.stroke();
+  c.fillStyle = COL.ok; c.font = `700 31px ${F.serif}`; c.fillText('정답  탄산수소 나트륨 쪽 풍선만 부풀어요.', mL + 24, y + 48);
+  c.fillStyle = COL.ink; c.font = `400 27px ${F.serif}`;
+  let ay = y + 92;
+  for (const ln of wrap(c, '탄산수소 나트륨이 식초를 만나면 이산화 탄소라는 새로운 기체가 생겨 풍선이 부풀어요. 물질의 성질이 변한 거예요. 밀가루는 식초에 섞여 뿌옇게 될 뿐 새 물질이 생기지 않아요.', cw - 48)){ c.fillText(ln, mL + 24, ay); ay += 40; }
+  if (S.flapOpen && S.pred !== null){
+    const good = S.pred === ANSWER;
+    c.fillStyle = good ? COL.ok : COL.accent; c.font = `400 40px ${F.hand}`; c.textAlign = 'right';
+    c.fillText(good ? '내 예상이 맞았어요!' : '내 예상과 달랐어요. 왜일까?', W - mR - 22, y + 48); c.textAlign = 'left';
+  }
+  y += fh + 54;
+
+  // quick check
+  c.fillStyle = '#ebe6dc'; rr(c, mL, y - 34, 150, 46, 10); c.fill();
+  c.fillStyle = COL.ink; c.font = `700 26px ${F.sans}`; c.fillText('한눈에 확인', mL + 16, y - 2);
+  c.font = `400 30px ${F.serif}`; c.fillText('탄산수소 나트륨과 식초를 섞으면 물질의 성질이', mL + 172, y - 2);
+  y += 30;
+  const chips = ['변합니다', '변하지 않습니다'];
+  let cx = mL + 172;
+  chips.forEach((t, i) => {
+    c.font = `700 30px ${F.serif}`; const tw = c.measureText(t).width + 52;
+    const sel = S.quiz === i, right = sel && i === 0;
+    c.fillStyle = right ? COL.ok : sel ? COL.accent : '#fff'; rr(c, cx, y, tw, 58, 29); c.fill();
+    c.strokeStyle = right ? COL.ok : sel ? COL.accent : 'rgba(42,40,51,.35)'; c.lineWidth = 2.5; rr(c, cx, y, tw, 58, 29); c.stroke();
+    c.fillStyle = sel ? '#fff' : COL.ink; c.fillText(t, cx + 26, y + 40);
+    P.hits.push({ x:cx, y, w:tw, h:58, on:() => answerQuiz(i) });
+    cx += tw + 16;
+  });
+  c.fillStyle = COL.ink; c.font = `400 30px ${F.serif}`; c.fillText('.', cx - 6, y + 40);
+
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.serif}`; c.fillText('38', mL, H - 46);
+  P.cnv.tex.needsUpdate = true;
+}
+
+/* ---------- right page ---------- */
+function drawRight(){
+  const P = pageR, c = P.cnv.ctx, W = 1400, H = 2000; P.hits = [];
+  paperBg(c, W, H, 1);
+  const mL = 190, mR = 110;
+  c.textBaseline = 'alphabetic';
+  c.fillStyle = COL.mute; c.font = `400 26px ${F.sans}`; c.textAlign = 'right'; c.fillText('탐구 1', W - mR, 92); c.textAlign = 'left';
+  c.strokeStyle = 'rgba(42,40,51,.18)'; c.lineWidth = 2; c.beginPath(); c.moveTo(mL,112); c.lineTo(W-mR,112); c.stroke();
+  c.fillStyle = COL.ink; c.font = `700 28px ${F.sans}`; c.fillText('그림 1', mL, 172);
+  c.font = `400 30px ${F.serif}`; c.fillText('두 풍선을 동시에 세우면 가루가 식초 속으로 떨어져요.', mL + 104, 172);
+
+  let msg = '풍선을 톡 눌러 동시에 세워 보세요';
+  if (S.pred === null) msg = '왼쪽 페이지에서 먼저 예상을 골라요';
+  else if (S.phase === 'running') msg = '두 플라스크를 비교하며 지켜봐요';
+  else if (S.phase === 'done') msg = '풍선, 식초, 거품이 어떻게 달라졌나요?';
+  c.fillStyle = COL.ink; c.font = `400 56px ${F.hand}`; c.fillText(msg, mL, 1520);
+  P.hits.push({ x:mL, y:1470, w:900, h:70, on:() => raise() });
+
+  const btn = (x, label, on, active) => {
+    c.font = `700 28px ${F.sans}`; const tw = c.measureText(label).width + 48;
+    c.fillStyle = active ? COL.ink : '#fff'; rr(c, x, 1572, tw, 58, 29); c.fill();
+    c.strokeStyle = COL.ink; c.lineWidth = 2.5; rr(c, x, 1572, tw, 58, 29); c.stroke();
+    c.fillStyle = active ? '#fff' : COL.ink; c.fillText(label, x + 24, 1611);
+    P.hits.push({ x, y:1572, w:tw, h:58, on });
+    return x + tw + 16;
+  };
+  let bx = btn(mL, S.xrayUser ? '풍선 속 보기: 켬' : '풍선 속 보기: 끔', () => { S.xrayUser = !S.xrayUser; drawRight(); }, S.xrayUser);
+  btn(bx, '↺ 다시 하기', () => resetAll(), false);
+
+  const sy = 1680;
+  c.strokeStyle = COL.accent; c.lineWidth = 2.5; rr(c, mL, sy, W - mL - mR, 210, 18); c.stroke();
+  c.fillStyle = COL.accent; rr(c, mL + 22, sy - 22, 92, 44, 22); c.fill();
+  c.fillStyle = '#fff'; c.font = `700 26px ${F.sans}`; c.fillText('안전', mL + 42, sy + 9);
+  c.fillStyle = COL.ink; c.font = `400 28px ${F.serif}`;
+  ['유리 기구가 깨지지 않도록 조심해요.', '약품이 피부에 닿지 않도록 실험용 장갑을 껴요.', '실험이 끝나면 쓴 물질은 선생님이 알려 준 곳에 버려요.']
+    .forEach((t, i) => { c.fillText('·  ' + t, mL + 30, sy + 70 + i*46); });
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.serif}`; c.textAlign = 'right'; c.fillText('39', W - mR, H - 46); c.textAlign = 'left';
+  P.cnv.tex.needsUpdate = true;
+}
+
+/* ---------- flap and stamp ---------- */
+let flap, flapPivot, flapCnv, stamp;
+function buildFlap(){
+  const R = FLAP_RECT;
+  const w = R.w/1400*PAGE_W, h = R.h/2000*PAGE_H;
+  flapCnv = makeCanvas(1100, Math.round(1100*R.h/R.w));
+  const paper = new THREE.MeshLambertMaterial({ color:'#f6efdf' });
+  const top = new THREE.MeshLambertMaterial({ map:flapCnv.tex });
+  const under = makeCanvas(512, Math.round(512*R.h/R.w));
+  { const c = under.ctx; c.fillStyle = '#f3ead8'; c.fillRect(0,0,under.w,under.h); c.fillStyle = COL.ok; c.font = `400 54px ${F.hand}`; c.textAlign='center'; c.fillText('정답 확인!', under.w/2, under.h/2 + 16); under.tex.needsUpdate = true; }
+  const bottom = new THREE.MeshLambertMaterial({ map:under.tex });
+  const geo = new THREE.BoxGeometry(w, 0.006, h).translate(0, 0.003, h/2);
+  flap = new THREE.Mesh(geo, [paper,paper,top,bottom,paper,paper]);
+  flap.castShadow = true; withEdges(flap, 1.3);
+  flapPivot = new THREE.Group();
+  const p = pageToWorld(-1, R.x + R.w/2, R.y);
+  flapPivot.position.set(p.x, PAGE_Y + 0.003, p.z);
+  flapPivot.add(flap); book.add(flapPivot);
+  drawFlap();
+
+  const sc = makeCanvas(512,512), c = sc.ctx;
+  c.translate(256,256); c.strokeStyle = '#c8322e'; c.fillStyle = '#c8322e';
+  c.lineWidth = 16; c.beginPath(); c.arc(0,0,226,0,Math.PI*2); c.stroke();
+  c.lineWidth = 5; c.beginPath(); c.arc(0,0,196,0,Math.PI*2); c.stroke();
+  c.textAlign = 'center'; c.font = `700 92px ${F.serif}`; c.fillText('관찰', 0, -18); c.fillText('완료', 0, 86);
+  c.font = `400 40px ${F.sans}`; c.fillText('★ 탐구 1 ★', 0, -122);
+  sc.tex.needsUpdate = true;
+  stamp = new THREE.Mesh(new THREE.PlaneGeometry(0.42,0.42), new THREE.MeshBasicMaterial({ map:sc.tex, transparent:true, opacity:0, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2 }));
+  stamp.rotation.x = -Math.PI/2; stamp.rotation.z = 0.22;
+  const sp = pageToWorld(-1, STAMP_AT.x, STAMP_AT.y); stamp.position.set(sp.x, PAGE_Y + 0.006, sp.z);
+  stamp.visible = false; stamp.renderOrder = 7; book.add(stamp);
+}
+function drawFlap(){
+  const { ctx:c, w, h } = flapCnv;
+  c.fillStyle = '#fbf5e6'; c.fillRect(0,0,w,h);
+  const rnd = seeded(21); for (let i=0;i<500;i++){ c.fillStyle = `rgba(90,70,50,${0.03*rnd()})`; c.fillRect(rnd()*w, rnd()*h, 2, 2); }
+  c.strokeStyle = COL.ink; c.lineWidth = 3; c.setLineDash([12,9]); c.strokeRect(14,14,w-28,h-28); c.setLineDash([]);
+  const open = S.phase === 'done';
+  c.fillStyle = COL.ink; c.font = `700 46px ${F.serif}`; c.textBaseline = 'alphabetic';
+  c.fillText(open ? '날개를 들어 정답을 확인해요' : '정답은 이 날개 아래에', 48, 84);
+  c.fillStyle = open ? COL.accent : COL.mute; c.font = `400 32px ${F.sans}`;
+  c.fillText(open ? '실험 끝! 이제 들어 볼 수 있어요.' : '실험을 마친 뒤에 들어 보세요.', 48, 136);
+  c.fillStyle = open ? COL.accent : COL.mute; c.font = `400 58px ${F.hand}`; c.textAlign = 'right';
+  c.fillText(open ? '여기를 들어요 ↗' : '아직이에요', w - 48, h - 40); c.textAlign = 'left';
+  // folded corner hint
+  c.fillStyle = '#e9dfc8'; c.beginPath(); c.moveTo(w-14, h-80); c.lineTo(w-14, h-14); c.lineTo(w-80, h-14); c.closePath(); c.fill();
+  c.strokeStyle = COL.ink; c.lineWidth = 2; c.stroke();
+  flapCnv.tex.needsUpdate = true;
+}
+
+/* ---------- HUD ---------- */
+const STOPS = [
+  { cap:'과학책 38쪽을 펼쳤어요. 오른쪽 그림이 책 위로 솟아올라요.', pos:[0.25,4.2,4.0], tgt:[0.15,0.35,0.2] },
+  { cap:'먼저 결과를 예상해요. 왼쪽 페이지에서 하나를 골라요.', pos:[-1.05,4.8,1.9], tgt:[-1.05,0.22,0.2] },
+  { cap:'식초가 든 삼각 플라스크 두 개에 가루를 넣은 풍선을 씌웠어요.', pos:[1.2,1.9,3.25], tgt:[1.2,0.85,-0.1] },
+  { cap:'속 보기: 왼쪽 풍선엔 밀가루, 오른쪽 풍선엔 탄산수소 나트륨이 두 숟가락씩 들어 있어요.', pos:[1.2,1.8,2.7], tgt:[1.2,0.95,-0.1], xray:true },
+  { cap:'자세히 보기: 탄산수소 나트륨이 식초를 만나는 곳이에요.', pos:[2.55,1.15,1.3], tgt:[1.6,0.6,-0.1] },
+  { cap:'비교하기: 두 플라스크와 풍선은 어떻게 다른가요?', pos:[1.2,2.25,3.95], tgt:[1.2,1.25,-0.1] }
+];
+let stopIdx = 0, tween = null, playing = false, playTimer = 0;
+const dotsEl = $('#dots');
+STOPS.forEach((s, i) => {
+  const b = document.createElement('button'); b.setAttribute('aria-label', `장면 ${i+1}`);
+  b.addEventListener('click', () => { stopPlay(); flyTo(i); }); dotsEl.appendChild(b);
+});
+function setCaption(t){ $('#capText').textContent = t; }
+function flyTo(i, cap){
+  stopIdx = (i + STOPS.length) % STOPS.length;
+  const s = STOPS[stopIdx];
+  const tgt = V(...s.tgt), pos = V(...s.pos);
+  const asp = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 1.6;
+  const f = Math.max(1, 1.55 / asp);
+  pos.sub(tgt).multiplyScalar(f).add(tgt);
+  tween = { t:0, dur: RM ? 0.01 : 1.7, p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:tgt };
+  setCaption(cap || s.cap);
+  [...dotsEl.children].forEach((d, k) => d.classList.toggle('on', k === stopIdx));
+}
+function stopPlay(){ playing = false; $('#playIco').innerHTML = '<path d="M8 5v14l11-7z"/>'; $('#bPlay').setAttribute('aria-label','자동 둘러보기'); }
+function startPlay(){ playing = true; playTimer = 0; $('#playIco').innerHTML = '<path d="M8 5v14M16 5v14"/>'; $('#bPlay').setAttribute('aria-label','둘러보기 멈추기'); }
+$('#bPrev').onclick = () => { stopPlay(); flyTo(stopIdx - 1); };
+$('#bNext').onclick = () => { stopPlay(); flyTo(stopIdx + 1); };
+$('#bPlay').onclick = () => { if (playing) stopPlay(); else { startPlay(); flyTo(stopIdx + 1); } };
+$('#bReset').onclick = () => resetAll();
+let soundOn = true;
+$('#bSound').onclick = () => { soundOn = !soundOn; $('#bSound').classList.toggle('off', !soundOn); $('#bSound').setAttribute('aria-label', soundOn ? '소리 끄기' : '소리 켜기'); };
+/* camera pad + keyboard: hold to keep rotating / zooming */
+const held = { px:0, pz:0, spin:0, z:0, tilt:0 };
+const keyHeld = new Set();
+function takeCamera(){ tween = null; S.userCam = true; stopPlay(); }
+function readBtn(btn){
+  if (btn.dataset.pan){ const [x,z] = btn.dataset.pan.split(',').map(Number); return { px:x, pz:z }; }
+  if (btn.dataset.tilt) return { tilt:Number(btn.dataset.tilt) };
+  if (btn.dataset.spin) return { spin:Number(btn.dataset.spin) };
+  return { z:Number(btn.dataset.zoom) };
+}
+document.querySelectorAll('#pad button[data-pan], #pad button[data-tilt], #pad button[data-spin], #pad button[data-zoom]').forEach(btn => {
+  const start = e => {
+    e.preventDefault(); takeCamera(); btn.classList.add('held');
+    try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+    Object.assign(held, readBtn(btn));
+  };
+  const end = () => { btn.classList.remove('held'); for (const k of Object.keys(readBtn(btn))) held[k] = 0; };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.addEventListener('lostpointercapture', end);
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); takeCamera(); const r = readBtn(btn); panCamera((r.px||0)*0.12, (r.pz||0)*0.12); moveCamera((r.spin||0)*0.25, -(r.tilt||0)*0.12, (r.z||0)*0.18); } });
+});
+$('#bHome').onclick = () => { S.userCam = false; flyTo(stopIdx); };
+const _sph = new THREE.Spherical(), _off = new THREE.Vector3();
+function moveCamera(dTheta, dPhi, dZoom){
+  if (!dTheta && !dPhi && !dZoom) return;
+  _off.copy(camera.position).sub(controls.target); _sph.setFromVector3(_off);
+  _sph.theta -= dTheta;
+  _sph.phi = clamp(_sph.phi - dPhi, 0.12, controls.maxPolarAngle);
+  _sph.radius = clamp(_sph.radius * Math.exp(dZoom), controls.minDistance, controls.maxDistance);
+  _off.setFromSpherical(_sph); camera.position.copy(controls.target).add(_off);
+}
+// slide the view across the desk: dx = right, dz = away from you (fractions of the viewing distance)
+const _fw = new THREE.Vector3(), _rt = new THREE.Vector3(), _mv = new THREE.Vector3();
+function panCamera(dx, dz){
+  if (!dx && !dz) return;
+  const dist = camera.position.distanceTo(controls.target);
+  camera.getWorldDirection(_fw); _fw.y = 0;
+  if (_fw.lengthSq() < 1e-6) _fw.set(0, 0, -1);
+  _fw.normalize(); _rt.set(-_fw.z, 0, _fw.x);
+  _mv.copy(_rt).multiplyScalar(dx*dist).addScaledVector(_fw, dz*dist);
+  controls.target.add(_mv); camera.position.add(_mv);
+  keepInBounds();
+}
+function keepInBounds(){
+  const t = controls.target;
+  const nx = clamp(t.x, -3, 3.2), nz = clamp(t.z, -2.6, 2.6);
+  if (nx !== t.x || nz !== t.z){ _mv.set(nx - t.x, 0, nz - t.z); t.add(_mv); camera.position.add(_mv); }
+}
+function applyHeld(dt){
+  let px = held.px, pz = held.pz, spin = held.spin, z = held.z, tilt = held.tilt;
+  if (keyHeld.has('ArrowLeft')) px -= 1; if (keyHeld.has('ArrowRight')) px += 1;
+  if (keyHeld.has('ArrowUp')) tilt -= 1; if (keyHeld.has('ArrowDown')) tilt += 1;
+  if (keyHeld.has('q')) spin -= 1; if (keyHeld.has('e')) spin += 1;
+  if (keyHeld.has('+')) z -= 1; if (keyHeld.has('-')) z += 1;
+  panCamera(px*0.6*dt, pz*0.6*dt);
+  moveCamera(spin*1.2*dt, -tilt*0.8*dt, z*1.1*dt);
+}
+function normKey(k){
+  if (k === '=' || k === 'Add') return '+';
+  if (k === '_' || k === 'Subtract') return '-';
+  if (k === 'Q' || k === 'ㅂ') return 'q';
+  if (k === 'E' || k === 'ㄷ') return 'e';
+  return k;
+}
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('#pad button') && (e.key === 'Enter' || e.key === ' ')) return;
+  const k = normKey(e.key);
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','q','e'].includes(k)){ e.preventDefault(); if (!keyHeld.has(k)) takeCamera(); keyHeld.add(k); }
+  else if (k === 'PageDown' || k === '.'){ stopPlay(); flyTo(stopIdx + 1); }
+  else if (k === 'PageUp' || k === ','){ stopPlay(); flyTo(stopIdx - 1); }
+  else if (k === '0' || k === 'Home'){ S.userCam = false; flyTo(stopIdx); }
+});
+addEventListener('keyup', e => keyHeld.delete(normKey(e.key)));
+addEventListener('blur', () => { keyHeld.clear(); held.px = held.pz = held.spin = held.z = held.tilt = 0; });
+
+let toastT = 0;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('show'); toastT = 3.2; }
+function setStep(k, on){ document.querySelector(`#steps li[data-k="${k}"]`).classList.toggle('on', on); }
+
+/* fizz sound (starts after the first tap) */
+let actx = null, fizzGain = null;
+function initAudio(){
+  if (actx) return;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * (Math.random() < 0.04 ? 1 : 0.35);
+    const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.7;
+    fizzGain = actx.createGain(); fizzGain.gain.value = 0;
+    src.connect(bp).connect(fizzGain).connect(actx.destination); src.start();
+  } catch (e) { actx = null; }
+}
+
+/* ---------- actions ---------- */
+function choosePrediction(i){
+  if (S.phase !== 'idle'){ toast('실험을 시작한 뒤에는 예상을 바꿀 수 없어요. 다시 하기를 누르면 처음부터 할 수 있어요.'); return; }
+  S.pred = i; setStep('pred', true); drawLeft(); drawRight();
+  setCaption('좋아요! 이제 오른쪽 풍선을 톡 눌러 동시에 세워 보세요.');
+  setTimeout(() => { if (S.phase === 'idle' && !S.userCam) flyTo(2, '좋아요! 이제 풍선을 톡 눌러 동시에 세워 보세요.'); }, 700);
+}
+function raise(){
+  if (S.phase === 'done'){ toast('실험이 끝났어요. 다시 하려면 ↺ 다시 하기를 눌러요.'); return; }
+  if (S.phase !== 'idle') return;
+  if (S.pred === null){ toast('먼저 왼쪽 페이지에서 결과를 예상해 보세요.'); stopPlay(); flyTo(1); return; }
+  S.phase = 'running'; S.tR = 0; S.userCam = false; stopPlay();
+  drawRight();
+  flyTo(4, '두 풍선을 동시에 세웠어요. 가루가 식초 속으로 떨어져요.');
+}
+function openFlap(){
+  if (S.flapOpen) return;
+  if (S.phase !== 'done'){ toast('정답은 실험을 마친 뒤에 확인해요.'); return; }
+  S.flapOpen = true; S.flapT = 0; setStep('flap', true); drawLeft();
+  setCaption('정답을 확인했어요. 마지막으로 한눈에 확인 문제를 풀어 봐요.');
+}
+function answerQuiz(i){
+  if (!S.flapOpen){ toast(S.phase === 'done' ? '날개를 들어 정답부터 확인해 봐요.' : '실험을 먼저 해 봐요.'); return; }
+  S.quiz = i; drawLeft();
+  if (i === 0){
+    if (S.stampT < 0){ S.stampT = 0; stamp.visible = true; }
+    setStep('quiz', true);
+    setCaption('관찰 완료! 새로운 물질이 생기면 물질의 성질이 변해요.');
+  } else {
+    toast('풍선이 부푼 건 새로운 기체가 생겼기 때문이에요. 다시 골라 볼까요?');
+  }
+}
+function resetAll(){
+  Object.assign(S, { pred:null, phase:'idle', tR:0, tau:-1, gas:0, inflate:0, emit:0, foam:0, cloud:0, flop:0, flapOpen:false, flapT:0, quiz:null, stampT:-1, xrayUser:false, spawnAcc:0, doneT:0, userCam:false, cues:{} });
+  for (const b of [bL, bR]){ b.U.uBend.value = LIMP.bend; b.U.uLen.value = LIMP.len; b.U.uRad.value = LIMP.rad; b.U.uFlat.value = LIMP.flat; }
+  for (const pw of [powL, powR]){ pw.hits = 0; pw.settled = 0; pw.P.forEach(p => { p.ph = 0; p.vy = 0; p.life = 0; p.done = false; }); }
+  B.forEach(b => b.on = false);
+  sediment.visible = false; sediment.scale.y = 0.001;
+  fL.liq.material.uniforms.uCloud.value = 0;
+  if (flapPivot) flapPivot.rotation.x = 0;
+  if (stamp){ stamp.visible = false; stamp.material.opacity = 0; }
+  ['pred','exp','flap','quiz'].forEach(k => setStep(k, false));
+  drawLeft(); drawRight(); drawFlap(); refreshCards(true);
+  stopPlay(); flyTo(0, '처음부터 다시! 왼쪽 페이지에서 결과를 예상해 보세요.');
+}
+function refreshCards(){
+  const ran = S.phase !== 'idle';
+  cardL.rows = [['풍선', !ran ? '축 처져 있어요' : S.flop > 0.5 ? '다시 축 처졌어요' : '세웠어요'],
+                ['식초', S.cloud > 0.2 ? '뿌옇게 흐려졌어요' : '맑은 노란색']];
+  cardL.meter = 0; cardL.level = ran && S.tR > 4 ? '없음' : '';
+  cardR.rows = [['풍선', !ran ? '축 처져 있어요' : S.inflate > 0.75 ? '크게 부풀었어요' : S.inflate > 0.05 ? '부푸는 중…' : '세웠어요'],
+                ['식초', S.foam > 0.15 ? '거품이 부글부글' : S.tau > 3 ? '거품이 생겼어요' : '맑은 노란색']];
+  cardR.meter = S.inflate; cardR.level = S.inflate > 0.6 ? '많이!' : S.inflate > 0.05 ? '생기는 중' : '';
+  drawCard(cardL); drawCard(cardR);
+}
+
+/* ---------- picking ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let pickables = [];
+function pick(ev){
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left)/r.width)*2 - 1, -((ev.clientY - r.top)/r.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(pickables, false)[0];
+  if (!hit) return null;
+  const o = hit.object;
+  if (o === fL.proxy || o === fR.proxy) return { act: raise, name:'flask' };
+  if (o === flap) return { act: openFlap, name:'flap' };
+  if (o === pageL.mesh || o === pageR.mesh){
+    const P = o === pageL.mesh ? pageL : pageR;
+    const cx = hit.uv.x * 1400, cy = (1 - hit.uv.y) * 2000;
+    const h = P.hits.find(h => cx >= h.x && cx <= h.x + h.w && cy >= h.y && cy <= h.y + h.h);
+    return h ? { act: h.on, name:'page' } : null;
+  }
+  return null;
+}
+let down = null;
+const activePtrs = new Set();
+canvas.addEventListener('pointerdown', e => {
+  activePtrs.add(e.pointerId);
+  down = { x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, t:performance.now(), moved:activePtrs.size > 1, drag:(e.pointerType !== 'mouse' || e.button === 0) && activePtrs.size === 1 };
+  initAudio(); if (actx && actx.state === 'suspended') actx.resume();
+});
+const dropPtr = e => { activePtrs.delete(e.pointerId); };
+canvas.addEventListener('pointercancel', e => { dropPtr(e); down = null; });
+canvas.addEventListener('pointermove', e => {
+  if (down){
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 7 && !down.moved){ down.moved = true; tween = null; S.userCam = true; stopPlay(); }
+    // one-finger / left-button drag: sideways slides the view, up-down tilts toward a front view
+    if (down.moved && down.drag && activePtrs.size === 1){
+      const h = innerHeight || 800, ddx = e.clientX - down.lx, ddy = e.clientY - down.ly;
+      panCamera(-ddx / h * 1.1, 0);
+      moveCamera(0, ddy * 2.2 / h, 0);
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+  } else if (e.pointerType === 'mouse'){
+    canvas.style.cursor = pick(e) ? 'pointer' : 'grab';
+  }
+});
+canvas.addEventListener('pointerup', e => {
+  dropPtr(e);
+  if (down && !down.moved && performance.now() - down.t < 600){ const h = pick(e); if (h) h.act(); }
+  if (activePtrs.size === 0) down = null; else if (down) down.drag = false;
+});
+
+/* ---------- scene labels ---------- */
+const labelsEl = $('#labels');
+function mkTag(text, blue){ const el = document.createElement('div'); el.className = 'tag' + (blue ? ' blue' : ''); el.textContent = text; labelsEl.appendChild(el); return el; }
+const _lp = new THREE.Vector3();
+const TAGS = [
+  { el:mkTag('식초'), at:o => fL.g.localToWorld(o.set(-0.12, 0.2, 0.3)), show:() => stopIdx === 2 && S.phase === 'idle' && !S.xray },
+  { el:mkTag('식초'), at:o => fR.g.localToWorld(o.set(0.12, 0.2, 0.3)), show:() => stopIdx === 2 && S.phase === 'idle' && !S.xray },
+  { el:mkTag('밀가루'), at:o => fL.g.localToWorld(balloonLocal(bL, 0.78, o)), show:() => S.xrayK > 0.5 && S.phase === 'idle' },
+  { el:mkTag('탄산수소 나트륨'), at:o => fR.g.localToWorld(balloonLocal(bR, 0.78, o)), show:() => S.xrayK > 0.5 && S.phase === 'idle' },
+  { el:mkTag('이산화 탄소 기체', true), at:o => fR.g.localToWorld(o.set(0.02, 0.82, 0)), show:() => S.emit > 0.18 },
+  { el:mkTag('거품이 부글부글'), at:o => fR.g.localToWorld(o.set(0.3, FILL + S.foam*FOAM_MAX + 0.02, 0.18)), show:() => S.foam > 0.25 },
+  { el:mkTag('뿌옇게 흐려져요'), at:o => fL.g.localToWorld(o.set(-0.18, 0.18, 0.3)), show:() => S.cloud > 0.3 && stopIdx !== 1 },
+  { el:mkTag('다시 축 처져요'), at:o => fL.g.localToWorld(balloonLocal(bL, 0.7, o)), show:() => S.flop > 0.6 && stopIdx !== 1 },
+  { el:mkTag('풍선이 부풀어요'), at:o => fR.g.localToWorld(balloonLocal(bR, 0.97, o)), show:() => S.inflate > 0.45 && stopIdx !== 1 }
+];
+function updateTags(){
+  const w = innerWidth, h = innerHeight;
+  for (const t of TAGS){
+    const vis = t.show();
+    t.el.classList.toggle('show', vis);
+    if (!vis) continue;
+    t.at(_lp); _lp.project(camera);
+    if (_lp.z > 1){ t.el.classList.remove('show'); continue; }
+    const x = (_lp.x + 1)/2*w, y = (1 - _lp.y)/2*h;
+    t.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, calc(-100% - 18px))`;
+  }
+}
+
+/* ---------- simulation ---------- */
+const dummy = new THREE.Object3D(), _t = new THREE.Vector3();
+function updatePowder(pw, dt, release, kind){
+  const b = pw.bal;
+  for (let i=0;i<pw.N;i++){
+    const p = pw.P[i];
+    if (p.ph === 0){
+      const r = profileR(p.t)*0.5*p.r;
+      bendPoint(b.U, Math.cos(p.a)*r, p.t, Math.sin(p.a)*r, _t);
+      p.x = b.flip ? -_t.x : _t.x; p.y = _t.y + BAL_Y; p.z = b.flip ? -_t.z : _t.z;
+      if (release !== null && release > p.delay){ p.ph = 1; p.vy = 0; }
+    } else if (p.ph === 1){
+      p.vy = Math.max(p.vy - 3.2*dt, -1.7); p.y += p.vy*dt;
+      const rm = rIn(p.y) - 0.016, rr0 = Math.hypot(p.x, p.z);
+      if (rr0 > rm){ const k = rm/rr0; p.x *= k; p.z *= k; }
+      if (p.y < FILL){
+        p.ph = 2; pw.hits++; p.life = 0;
+        const a = Math.random()*6.283, d = Math.sqrt(Math.random())*0.27;
+        p.fx = Math.cos(a)*d; p.fz = Math.sin(a)*d; p.fy = 0.016 + Math.random()*0.026;
+        if (kind === 'soda' && S.tau < 0) S.tau = 0;
+      }
+    } else if (p.ph === 2){
+      p.life += dt;
+      if (kind === 'flour'){
+        p.y = lerp(p.y, p.fy, Math.min(1, dt*0.9)); p.x = lerp(p.x, p.fx, Math.min(1, dt*0.6)); p.z = lerp(p.z, p.fz, Math.min(1, dt*0.6));
+        if (p.life > 2.6 && !p.done){ p.done = true; pw.settled++; }
+      } else {
+        p.y = lerp(p.y, 0.03, Math.min(1, dt*2)); p.x = lerp(p.x, p.fx, Math.min(1, dt*1.3)); p.z = lerp(p.z, p.fz, Math.min(1, dt*1.3));
+        if (p.life > 1.1 + p.delay*2.5){ p.ph = 3; p.y = -50; }
+      }
+    }
+    pw.pos[i*3] = p.x; pw.pos[i*3+1] = p.y; pw.pos[i*3+2] = p.z;
+  }
+  pw.geo.attributes.position.needsUpdate = true;
+}
+function setBalloon(b, bend, len, rad, flat){ b.U.uBend.value = bend; b.U.uLen.value = len; b.U.uRad.value = rad; b.U.uFlat.value = flat; }
+
+function simulate(dt, time){
+  if (S.phase === 'running' || S.phase === 'done'){
+    S.tR += dt;
+    const L = easeIO(clamp(S.tR/1.3, 0, 1));
+    // flour balloon: rises, then flops back down because nothing fills it
+    const fl = S.tR > 2.4 ? easeOut(clamp((S.tR - 2.4)/1.6, 0, 1)) : 0; S.flop = fl;
+    setBalloon(bL, lerp(LIMP.bend, 0, L) + lerp(0, 9.0, fl) + Math.sin(S.tR*9)*0.06*(1-fl)*L*(S.tR<3?1:0),
+      lerp(LIMP.len, 0.86, L), lerp(LIMP.rad, 0.66, L), lerp(lerp(LIMP.flat, 0.6, L), 0.36, fl));
+    // baking-soda balloon: carbon dioxide fills it
+    if (S.tau >= 0){
+      S.tau += dt;
+      S.emit = smooth(0, 0.6, S.tau) * Math.exp(-Math.max(S.tau - 2.8, 0)/3.6);
+      S.gas += S.emit*dt; S.inflate = 1 - Math.exp(-S.gas/2.6);
+    }
+    const inf = S.inflate;
+    setBalloon(bR, lerp(LIMP.bend, 0, L) + Math.sin(time*7)*0.05*S.emit,
+      lerp(lerp(LIMP.len, 0.86, L), 1.12, inf), lerp(lerp(LIMP.rad, 0.66, L), 1.72, inf),
+      lerp(lerp(LIMP.flat, 0.6, L), 1.0, smooth(0, 0.35, inf)));
+    const release = S.tR > 0.75 ? S.tR - 0.75 : null;
+    updatePowder(powL, dt, release, 'flour');
+    updatePowder(powR, dt, release, 'soda');
+    S.cloud = lerp(S.cloud, smooth(0, 1, powL.hits/powL.N)*0.58, Math.min(1, dt*0.8));
+    fL.liq.material.uniforms.uCloud.value = S.cloud;
+    if (powL.settled > 0){ sediment.visible = true; sediment.scale.y = Math.max(0.001, powL.settled/powL.N); }
+    const ft = S.tau >= 0 ? smooth(0, 1.2, S.tau) * (0.3 + 0.7*S.emit) : 0;
+    S.foam = lerp(S.foam, ft, Math.min(1, dt*1.8));
+
+    if (S.tR > 1.2 && !S.cues.exp){ S.cues.exp = true; setStep('exp', true); }
+    if (S.tau > 1.0 && !S.cues.fizz){ S.cues.fizz = true; if (!S.userCam) setCaption('부글부글! 탄산수소 나트륨 쪽에서 기체가 생겨 풍선으로 올라가요.'); }
+    if (S.tau > 6.2 && !S.cues.cmp){ S.cues.cmp = true; if (!S.userCam) flyTo(5, '비교하기: 밀가루 쪽 풍선은 다시 처졌고, 탄산수소 나트륨 쪽 풍선은 부풀었어요.'); }
+    if (S.tau > 10.5 && S.phase === 'running'){
+      S.phase = 'done'; S.doneT = 0; drawRight(); drawFlap(); refreshCards();
+      setCaption('실험 끝! 왼쪽 페이지의 날개를 들어 정답을 확인해요.');
+    }
+    if (S.phase === 'done'){
+      S.doneT += dt;
+      if (S.doneT > 3 && !S.cues.toFlap){ S.cues.toFlap = true; if (!S.userCam && !S.flapOpen) flyTo(1, '왼쪽 페이지의 날개를 톡 눌러 들어 보세요.'); }
+    }
+    S.cardTimer += dt; if (S.cardTimer > 0.25){ S.cardTimer = 0; refreshCards(); }
+  } else {
+    updatePowder(powL, dt, null, 'flour'); updatePowder(powR, dt, null, 'soda');
+  }
+
+  // bubbles
+  S.spawnAcc += 120*S.emit*dt;
+  while (S.spawnAcc >= 1){
+    S.spawnAcc -= 1;
+    const b = B.find(b => !b.on); if (!b) break;
+    const a = Math.random()*6.283, d = Math.sqrt(Math.random())*rIn(0.03)*0.85;
+    Object.assign(b, { on:true, x:Math.cos(a)*d, z:Math.sin(a)*d, y:0.02 + Math.random()*0.06, s:0.008 + Math.random()*0.015, v:0.16 + Math.random()*0.22 });
+  }
+  const topY = FILL + S.foam*FOAM_MAX*0.7;
+  for (let i=0;i<NB;i++){
+    const b = B[i];
+    if (b.on){
+      b.v += 0.2*dt; b.y += b.v*dt; b.x += Math.sin(b.ph + b.y*22)*0.0015;
+      const rm = rIn(b.y) - b.s - 0.01, r0 = Math.hypot(b.x, b.z); if (r0 > rm){ b.x *= rm/r0; b.z *= rm/r0; }
+      if (b.y > topY) b.on = false;
+    }
+    dummy.position.set(b.x, b.y, b.z); dummy.scale.setScalar(b.on ? b.s : 0); dummy.updateMatrix();
+    bubbles.setMatrixAt(i, dummy.matrix);
+  }
+  bubbles.instanceMatrix.needsUpdate = true;
+
+  // foam
+  const H = S.foam*FOAM_MAX;
+  foamCol.visible = foamBits.visible = H > 0.004;
+  if (foamCol.visible){
+    foamCol.scale.y = H/FOAM_MAX;
+    const k = smooth(0, 0.12, S.foam);
+    for (let i=0;i<NF;i++){
+      const f = FB[i], y = FILL + H*f.layer, r = Math.max(0, rIn(y) - 0.04)*f.rf;
+      dummy.position.set(Math.cos(f.a)*r, y + Math.sin(time*6 + f.ph)*0.004, Math.sin(f.a)*r);
+      dummy.scale.setScalar((0.026 + 0.034*f.sz)*k); dummy.updateMatrix(); foamBits.setMatrixAt(i, dummy.matrix);
+    }
+    foamBits.instanceMatrix.needsUpdate = true;
+  }
+
+  // CO2 ribbon + glow + sound
+  const op = smooth(0.04, 0.3, S.emit);
+  ribbon.visible = op > 0.01; ribbon.material.uniforms.uOp.value = op; ribbon.material.uniforms.uTime.value = time;
+  glow.intensity = 0.34*S.emit + 0.04*S.inflate;
+  if (fizzGain && actx){ fizzGain.gain.setTargetAtTime(soundOn ? S.emit*0.07*(0.6 + 0.4*Math.random()) : 0, actx.currentTime, 0.05); }
+
+  // x-ray balloons
+  S.xray = S.xrayUser || !!STOPS[stopIdx].xray && !tween || (!!STOPS[stopIdx].xray && tween && tween.t > tween.dur*0.6);
+  S.xrayK = lerp(S.xrayK, S.xray ? 1 : 0, Math.min(1, dt*5));
+  for (const b of [bL, bR]){
+    b.mat.opacity = lerp(1, 0.3, S.xrayK);
+    b.mat.depthWrite = S.xrayK < 0.05;
+    b.hull.visible = S.xrayK < 0.5;
+  }
+
+  // flap + stamp
+  if (S.flapOpen && flapPivot){ S.flapT = Math.min(1, S.flapT + dt/1.1); flapPivot.rotation.x = -1.95 * easeBack(S.flapT); }
+  if (S.stampT >= 0 && stamp){
+    S.stampT += dt; const k = clamp(S.stampT/0.35, 0, 1);
+    stamp.scale.setScalar(lerp(1.9, 1, easeOut(k))); stamp.material.opacity = Math.min(1, k*1.3);
+  }
+}
+
+/* ---------- loop ---------- */
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  for (const m of lineMats) m.resolution.set(w, h);
+}
+addEventListener('resize', resize); resize();
+
+const clock = new THREE.Clock();
+let popT = -0.4, time = 0;
+function frame(){
+  const dt = Math.min(clock.getDelta(), 0.05); time += dt;
+  // drawing lifts off the page
+  if (popT < 1.2){ popT += dt; const k = RM ? 1 : easeBack(clamp(popT/1.1, 0, 1)); app.scale.set(1, Math.max(0.001, k), 1); }
+  if (tween){
+    tween.t += dt; const k = easeIO(clamp(tween.t/tween.dur, 0, 1));
+    camera.position.lerpVectors(tween.p0, tween.p1, k); controls.target.lerpVectors(tween.t0, tween.t1, k);
+    if (tween.t >= tween.dur) tween = null;
+  }
+  if (playing && !tween){ playTimer += dt; if (playTimer > 5){ playTimer = 0; flyTo(stopIdx + 1); } }
+  if (toastT > 0){ toastT -= dt; if (toastT <= 0) $('#toast').classList.remove('show'); }
+  applyHeld(dt);
+  { // self-heal if the camera ever ends up at an invalid spot
+    const p = camera.position, t = controls.target;
+    if (!Number.isFinite(p.x + p.y + p.z + t.x + t.y + t.z)){
+      const s = STOPS[stopIdx]; tween = null; p.set(...s.pos); t.set(...s.tgt);
+    }
+  }
+  controls.update();
+  keepInBounds();
+  simulate(dt, time);
+  updateTags();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- boot ---------- */
+(async () => {
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load(`700 40px "Gowun Batang"`, '가나'), document.fonts.load(`400 40px "Gowun Batang"`, '가나'),
+        document.fonts.load(`400 40px "Gowun Dodum"`, '가나'), document.fonts.load(`400 40px "Nanum Pen Script"`, '가나')
+      ]),
+      new Promise(r => setTimeout(r, 3500))
+    ]);
+  } catch (e) {}
+  drawLeft(); drawRight(); buildFlap(); refreshCards();
+  pickables = [fL.proxy, fR.proxy, flap, pageL.mesh, pageR.mesh];
+  flyTo(0);
+  $('#veil').classList.add('gone');
+  window.__bookReady = true;
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

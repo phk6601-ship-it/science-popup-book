@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>입체 과학책 · 물질의 연소</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<style>
+/* Layout: one centred column; a desk-coloured page with two lesson rows, each holding a textbook card and a workbook card */
+:root{
+  --bg:#e6dfd2; --paper:#f8f5ee; --ink:#2a2833; --mute:#6f6a78; --line:rgba(42,40,51,.16);
+  --accent:#d9572f; --green:#5b8f7a; --gold:#d7a33a;
+  --f-serif:"Gowun Batang","Nanum Myeongjo",serif; --f-ui:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif; --f-hand:"Nanum Pen Script",cursive;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#1d1c21; --paper:#27262d; --ink:#efebe3; --mute:#aaa4b3; --line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark; }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--f-ui);
+  padding:calc(40px + env(safe-area-inset-top,0px)) max(16px, env(safe-area-inset-right,0px)) calc(48px + env(safe-area-inset-bottom,0px)) max(16px, env(safe-area-inset-left,0px));
+}
+main{max-width:880px; margin:0 auto; display:flex; flex-direction:column; gap:34px}
+header{display:flex; flex-direction:column; gap:8px}
+.eyebrow{font-size:13px; color:var(--mute); letter-spacing:.06em}
+h1{margin:0; font-family:var(--f-serif); font-size:clamp(28px, 5vw, 40px); line-height:1.25; text-wrap:balance}
+header p{margin:0; color:var(--mute); line-height:1.7; max-width:62ch}
+section{display:flex; flex-direction:column; gap:14px}
+h2{margin:0; font-family:var(--f-serif); font-size:20px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+h2 .num{font-size:44px; color:var(--accent); line-height:1}
+.grid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px}
+a.card{
+  display:flex; flex-direction:column; gap:8px; padding:18px 20px 20px; border-radius:12px; text-decoration:none; color:inherit;
+  background:var(--paper); border:1px solid var(--line); border-left:6px solid var(--gold); min-width:0;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+a.card.wb{border-left-color:var(--green)}
+a.card:hover{transform:translateY(-2px); box-shadow:0 8px 22px rgba(0,0,0,.12)}
+a.card:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+.kind{font-size:12px; color:var(--mute); letter-spacing:.05em}
+.title{font-family:var(--f-serif); font-weight:700; font-size:18px; line-height:1.4}
+.desc{font-size:14px; line-height:1.6; color:var(--mute)}
+.go{font-family:var(--f-hand); font-size:24px; color:var(--accent); margin-top:auto}
+footer{font-size:13px; color:var(--mute); line-height:1.7}
+@media (max-width:640px){ .grid{grid-template-columns:1fr} }
+@media (prefers-reduced-motion: reduce){ a.card{transition:none} a.card:hover{transform:none} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="eyebrow">6학년 2학기 과학 · 2. 물질의 연소</span>
+    <h1>책 위로 솟아오르는 입체 과학책</h1>
+    <p>교과서는 결과를 예상하고 3D 실험을 지켜본 뒤 날개를 들어 정답을 확인해요. 실험관찰은 직접 끌고 눌러 실험하고, 관찰 기록지를 체크하거나 가림막을 열어 정리해요.</p>
+  </header>
+
+  <section aria-labelledby="l1">
+    <h2 id="l1"><span class="num">1</span>서로 다른 물질을 섞으면 어떻게 될까?</h2>
+    <div class="grid">
+      <a class="card" href="lesson1-textbook/">
+        <span class="kind">과학 교과서 38~39쪽</span>
+        <span class="title">밀가루와 탄산수소 나트륨을 식초에 넣으면</span>
+        <span class="desc">풍선을 세우면 한쪽은 이산화 탄소로 부풀고, 다른 쪽은 다시 처져요.</span>
+        <span class="go">펼쳐 보기 →</span>
+      </a>
+      <a class="card wb" href="lesson1-workbook/">
+        <span class="kind">실험관찰 22~23쪽 · 직접 해 보기</span>
+        <span class="title">가루 넣기부터 풍선 세우기까지</span>
+        <span class="desc">깔때기로 가루를 넣고, 식초를 기준선까지 붓고, 두 풍선을 동시에 세워요.</span>
+        <span class="go">실험하러 가기 →</span>
+      </a>
+    </div>
+  </section>
+
+  <section aria-labelledby="l2">
+    <h2 id="l2"><span class="num">2</span>물질이 탈 때 어떤 현상이 나타날까?</h2>
+    <div class="grid">
+      <a class="card" href="lesson2-textbook/">
+        <span class="kind">과학 교과서 40~41쪽</span>
+        <span class="title">양초와 알코올이 탈 때 나오는 빛과 열</span>
+        <span class="desc">두 불꽃을 비교하고, 빛과 열이 퍼져 나가는 흐름을 눈으로 봐요.</span>
+        <span class="go">펼쳐 보기 →</span>
+      </a>
+      <a class="card wb" href="lesson2-workbook/">
+        <span class="kind">실험관찰 24~25쪽 · 직접 해 보기</span>
+        <span class="title">안전 점검부터 불 끄기까지</span>
+        <span class="desc">양초와 알코올램프에 불을 붙이고, 불꽃·따뜻함·시간 변화를 관찰해요.</span>
+        <span class="go">실험하러 가기 →</span>
+      </a>
+    </div>
+  </section>
+
+  <footer>3D 장면은 그래픽 가속이 켜진 브라우저에서 가장 잘 보여요. 학교 인터넷에서 cdn.jsdelivr.net이 막혀 있으면 장면이 열리지 않을 수 있어요.</footer>
+</main>
+</body>
+</html>

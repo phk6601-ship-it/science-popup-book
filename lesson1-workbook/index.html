@@ -1,0 +1,1817 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>실험관찰 직접 해 보기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<style>
+/* Layout: full-bleed 3D lab bench on an open workbook; progress chip top-left, step bar bottom-centre, camera pad bottom-right, observation sheet slides over everything */
+:root{
+  --desk:#e6dfd2;
+  --hud-bg:rgba(251,249,244,.93);
+  --hud-fg:#2a2833;
+  --hud-mute:#6f6a78;
+  --hud-line:rgba(42,40,51,.15);
+  --accent:#d9572f;
+  --ok:#2e7d55;
+  --co2:#2f7dff;
+  --tag-bg:#fbf8f0; --tag-fg:#2a2833; --tag-line:#2a2833;
+  --sheet-bg:#f8f5ee; --sheet-fg:#2a2833; --sheet-mute:#6f6a78; --sheet-line:#2a2833;
+  --sheet-soft:#fbe3d5; --sheet-cell:#ffffff; --sheet-cover:#efe5cf; --sheet-ok:#e3f1e8; --sheet-bad:#fbe0dc;
+  --f-ui:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"Nanum Pen Script","Gaegu","Apple SD Gothic Neo",cursive;
+  --f-serif:"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk:#1d1c21; --hud-bg:rgba(34,33,40,.93); --hud-fg:#efebe3; --hud-mute:#aaa4b3;
+    --hud-line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --desk:#1d1c21; --hud-bg:rgba(34,33,40,.93); --hud-fg:#efebe3; --hud-mute:#aaa4b3;
+  --hud-line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark;
+}
+html,body{height:100%}
+body{
+  background:var(--desk); color:var(--hud-fg); font-family:var(--f-ui);
+  overflow:hidden; -webkit-tap-highlight-color:transparent;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+#c{position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; outline:none}
+button{font-family:inherit}
+
+/* progress chip */
+#chip{
+  position:fixed; top:calc(12px + env(safe-area-inset-top,0px)); left:max(16px, env(safe-area-inset-left,0px));
+  display:flex; flex-direction:column; gap:6px; padding:10px 14px 11px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:14px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); max-width:calc(100% - 32px);
+}
+#chip .eyebrow{font-size:12px; color:var(--hud-mute); letter-spacing:.04em}
+#chip .name{font-family:var(--f-serif); font-weight:700; font-size:15px; text-wrap:balance}
+#steps{display:flex; gap:6px; flex-wrap:wrap; margin:2px 0 0; padding:0; list-style:none}
+#steps li{
+  font-size:12px; padding:3px 9px 3px 7px; border-radius:999px; border:1px dashed var(--hud-line);
+  color:var(--hud-mute); display:flex; align-items:center; gap:5px; transition:all .3s;
+}
+#steps li::before{content:""; width:8px; height:8px; border-radius:50%; border:1.5px solid currentColor}
+#steps li.now{border-style:solid; border-color:var(--accent); color:var(--accent)}
+#steps li.done{border-style:solid; border-color:var(--ok); color:var(--ok)}
+#steps li.done::before{background:var(--ok)}
+
+/* step bar */
+#bar{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  width:min(800px, calc(100% - 32px));
+  display:flex; align-items:center; gap:4px; padding:6px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:999px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+}
+#bar button{
+  flex:none; height:40px; min-width:40px; border-radius:999px; border:0; background:transparent;
+  color:var(--hud-fg); display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; padding:0 10px; font-size:14px;
+}
+#bar button:hover{background:var(--hud-line)}
+#bar button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+#bar svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none}
+#bar #bSheet{background:var(--accent); color:#fff; padding:0 14px}
+#bar #bSheet.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(217,87,47,.5)}50%{box-shadow:0 0 0 8px rgba(217,87,47,0)}}
+#cap{flex:1; min-width:0; padding:0 8px; font-size:14px; line-height:1.4}
+#capText{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+#bar button.off{opacity:.45}
+.sep{width:1px; height:24px; background:var(--hud-line); flex:none; margin:0 2px}
+@media (max-width:620px){
+  #bar{flex-wrap:wrap; border-radius:20px; justify-content:center}
+  #cap{order:-1; flex-basis:100%; padding:4px 8px 2px}
+  .sep{display:none}
+}
+
+/* camera pad */
+#pad{
+  position:fixed; right:max(16px, env(safe-area-inset-right,0px));
+  bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  display:flex; gap:8px; align-items:flex-end; padding:8px;
+  background:var(--hud-bg); border:1px solid var(--hud-line); border-radius:18px;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  touch-action:none; user-select:none; -webkit-user-select:none;
+}
+#pad .dpad{display:grid; grid-template-columns:repeat(3,44px); grid-template-rows:repeat(3,44px); gap:4px}
+#pad .zoom{display:grid; grid-template-rows:repeat(2,44px); gap:4px}
+#pad button{
+  width:44px; height:44px; border-radius:12px; border:1px solid var(--hud-line); background:transparent;
+  color:var(--hud-fg); display:grid; place-items:center; cursor:pointer; padding:0;
+}
+#pad button:hover{background:var(--hud-line)}
+#pad button:active,#pad button.held{background:var(--accent); color:#fff; border-color:var(--accent)}
+#pad button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+#pad svg{width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+#pad .home{font-size:11px; line-height:1.1}
+@media (max-width:620px){
+  #pad{bottom:calc(132px + env(safe-area-inset-bottom,0px)); padding:6px; gap:6px}
+  #pad .dpad{grid-template-columns:repeat(3,38px); grid-template-rows:repeat(3,38px)}
+  #pad .zoom{grid-template-rows:repeat(2,38px)}
+  #pad button{width:38px; height:38px}
+}
+
+/* scene labels */
+#labels{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+.tag{
+  position:absolute; left:0; top:0; white-space:nowrap;
+  font-family:var(--f-hand); font-size:24px; line-height:1; color:var(--tag-fg);
+  background:var(--tag-bg); border:1.5px solid var(--tag-line); border-radius:7px; padding:4px 10px 3px;
+  opacity:0; transition:opacity .3s; box-shadow:2px 3px 0 rgba(42,40,51,.18);
+}
+.tag::after{content:""; position:absolute; left:50%; top:100%; width:1.5px; height:16px; background:var(--tag-line)}
+.tag.show{opacity:1}
+.tag.blue{color:#1f5fd1; border-color:#1f5fd1}
+.tag.blue::after{background:#1f5fd1}
+.tag.orange{color:#c2461f; border-color:#c2461f}
+.tag.orange::after{background:#c2461f}
+.tag.big{font-size:28px}
+
+#toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  top:calc(16px + env(safe-area-inset-top,0px));
+  background:var(--hud-fg); color:var(--desk); padding:10px 16px; border-radius:10px; font-size:14px; line-height:1.45;
+  max-width:min(520px, calc(100% - 32px)); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none;
+}
+#toast.show{opacity:1}
+@media (max-width:760px){ #toast{top:auto; bottom:calc(122px + env(safe-area-inset-bottom,0px))} }
+
+/* observation card (실험하기 전) */
+#card{
+  position:fixed; top:calc(118px + env(safe-area-inset-top,0px)); left:max(16px, env(safe-area-inset-left,0px));
+  width:min(300px, calc(100% - 32px)); background:var(--sheet-bg); color:var(--sheet-fg);
+  border:2px solid var(--sheet-line); border-radius:12px; padding:12px 14px 14px; box-shadow:3px 4px 0 rgba(42,40,51,.2);
+}
+#card h3{margin:0 0 6px; font-family:var(--f-serif); font-size:17px}
+#card ul{margin:0; padding-left:18px; font-size:14px; line-height:1.6}
+#card .x{position:absolute; right:6px; top:6px; width:32px; height:32px; border:0; background:transparent; font-size:18px; cursor:pointer; color:var(--sheet-fg)}
+
+#veil{
+  position:fixed; inset:0; display:grid; place-items:center; background:var(--desk);
+  font-family:var(--f-serif); font-size:18px; color:var(--hud-mute); transition:opacity .6s;
+}
+#veil.gone{opacity:0; pointer-events:none}
+
+/* ---------- observation sheet ---------- */
+#sheet{
+  position:fixed; inset:0; z-index:20; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:rgba(30,28,36,.45);
+  padding-top:calc(16px + env(safe-area-inset-top,0px)); padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px));
+}
+.paper{
+  max-width:880px; margin:0 auto; background:var(--sheet-bg); color:var(--sheet-fg);
+  border-radius:10px; padding:22px 26px 30px; box-shadow:0 18px 50px rgba(0,0,0,.3);
+  display:flex; flex-direction:column; gap:18px;
+}
+.paper header{display:flex; gap:12px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap}
+.paper .pg{font-size:12px; color:var(--sheet-mute); letter-spacing:.05em}
+.paper h2{margin:4px 0 0; font-family:var(--f-serif); font-size:21px; line-height:1.4; text-wrap:balance}
+.paper h2 b{color:var(--accent); margin-right:6px}
+.btn{
+  border:1.5px solid var(--sheet-line); background:var(--sheet-cell); color:var(--sheet-fg); border-radius:999px;
+  padding:8px 16px; font-size:14px; cursor:pointer; min-height:40px;
+}
+.btn:hover{background:var(--sheet-soft)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn.primary{background:var(--sheet-fg); color:var(--sheet-bg)}
+.modes{display:flex; flex-wrap:wrap; gap:0; border:1.5px solid var(--sheet-line); border-radius:999px; overflow:hidden; align-self:flex-start}
+.modes button{border:0; background:transparent; padding:9px 16px; font-size:14px; cursor:pointer; color:var(--sheet-fg); min-height:40px}
+.modes button[aria-pressed="true"]{background:var(--sheet-fg); color:var(--sheet-bg)}
+.note{margin:-8px 0 0; font-size:14px; color:var(--sheet-mute); line-height:1.6}
+.tbl{border:2px solid var(--sheet-line); border-radius:8px; overflow:hidden}
+.trow{display:grid; grid-template-columns:150px 1fr 1fr; border-top:1.5px solid var(--sheet-line)}
+.trow:first-child{border-top:0}
+.trow > div{padding:10px 12px; min-width:0}
+.trow > div + div{border-left:1.5px solid var(--sheet-line)}
+.thead > div{background:var(--sheet-soft); font-weight:700; font-family:var(--f-serif); text-align:center; font-size:15px}
+.rlabel{background:#f1ece1; font-family:var(--f-serif); font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.45}
+.cell{display:flex; flex-direction:column; gap:8px; position:relative}
+.cell.ok{background:var(--sheet-ok)}
+.cell.bad{background:var(--sheet-bad)}
+.opts{display:flex; flex-wrap:wrap; gap:6px}
+.opt{
+  border:1.5px solid rgba(42,40,51,.35); background:var(--sheet-cell); color:var(--sheet-fg); border-radius:10px;
+  padding:7px 10px 7px 32px; font-size:14px; cursor:pointer; position:relative; text-align:left; line-height:1.35; min-height:40px;
+}
+.opt::before{content:""; position:absolute; left:9px; top:50%; width:15px; height:15px; margin-top:-8px; border:2px solid var(--sheet-line); border-radius:3px; background:var(--sheet-cell)}
+.opt[aria-pressed="true"]{border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent)}
+.opt[aria-pressed="true"]::before{background:var(--accent); border-color:var(--accent)}
+.opt[aria-pressed="true"]::after{content:""; position:absolute; left:14px; top:50%; width:5px; height:9px; margin-top:-7px; border:solid #fff; border-width:0 2.5px 2.5px 0; transform:rotate(45deg)}
+.opt.pic{padding:6px 6px 6px 28px; max-width:116px; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px}
+.opt.pic svg{width:62px; height:74px}
+.verdict{font-family:var(--f-hand); font-size:24px; line-height:1.1}
+.verdict.ok{color:var(--ok)} .verdict.bad{color:#c2461f}
+.ans{font-family:var(--f-hand); font-size:25px; line-height:1.2; color:#1f3f8f; display:flex; flex-direction:column; align-items:flex-start; gap:4px}
+.ans svg{width:84px; height:100px}
+.cover{
+  position:absolute; inset:6px; border-radius:8px; border:1.5px dashed var(--sheet-line);
+  background:repeating-linear-gradient(135deg, var(--sheet-cover) 0 10px, #e8dcc1 10px 20px);
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:2px;
+  font-size:14px; cursor:pointer; color:var(--sheet-fg); transform-origin:top center; transition:transform .55s cubic-bezier(.3,1.4,.5,1), opacity .4s;
+}
+.cover b{font-family:var(--f-hand); font-size:24px; font-weight:400}
+.cover:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.cover.open{transform:perspective(500px) rotateX(-100deg); opacity:0; pointer-events:none}
+.cell.flapcell{min-height:110px}
+.actions{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.score{font-family:var(--f-hand); font-size:26px; color:var(--ok)}
+.block{border:1.5px solid var(--sheet-line); border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; gap:10px}
+.block h3{margin:0; font-family:var(--f-serif); font-size:17px}
+.block h3 .pill{display:inline-block; background:var(--accent); color:#fff; border-radius:999px; padding:2px 10px; font-size:13px; margin-right:8px; vertical-align:2px}
+textarea{
+  width:100%; box-sizing:border-box; min-height:84px; resize:vertical; border:0; border-bottom:2px dotted var(--sheet-line);
+  background:repeating-linear-gradient(transparent 0 33px, rgba(42,40,51,.15) 33px 34px); line-height:34px;
+  font-family:var(--f-hand); font-size:26px; color:#1f3f8f; padding:0 4px;
+}
+textarea:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.example{position:relative; min-height:64px; border-radius:8px; background:var(--sheet-cell); padding:10px 12px; font-size:15px; line-height:1.6}
+.self{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px}
+.selfitem{background:#fff3b8; border-radius:14px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; font-size:14px; line-height:1.5}
+.selfitem small{display:inline-block; background:var(--sheet-fg); color:var(--sheet-bg); border-radius:6px; padding:0 6px; font-size:12px; margin-right:4px}
+.faces{display:flex; gap:6px}
+.face{width:44px; height:44px; border-radius:50%; border:1.5px solid var(--sheet-line); background:var(--sheet-cell); cursor:pointer; padding:0; display:grid; place-items:center}
+.face svg{width:30px; height:30px}
+.face[aria-pressed="true"]{background:var(--accent)}
+.face[aria-pressed="true"] svg *{stroke:#fff}
+@media (max-width:640px){
+  .paper{padding:16px 14px 22px}
+  .trow{grid-template-columns:1fr 1fr}
+  .trow > .rlabel{grid-column:1 / -1; border-left:0; justify-content:flex-start}
+  .trow > .rlabel + div{border-left:0}
+  .thead > div:first-child{display:none}
+  .thead > div:nth-child(2){border-left:0}
+  .self{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){ .tag,#toast,#veil,#steps li,.cover{transition:none} #bar #bSheet.pulse{animation:none} }
+</style>
+
+</head>
+<body>
+<a href="../" style="position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));z-index:30;font:13px 'Gowun Dodum',sans-serif;background:rgba(251,249,244,.92);color:#2a2833;border:1px solid rgba(42,40,51,.15);border-radius:999px;padding:8px 14px;text-decoration:none">← 목차</a>
+<canvas id="c" tabindex="0" aria-label="펼쳐진 실험관찰 책 위의 3D 실험대"></canvas>
+<div id="labels" aria-hidden="true"></div>
+
+<section id="chip" aria-label="진행 상황">
+  <span class="eyebrow">실험관찰 22~23쪽 · 직접 해 보기</span>
+  <span class="name">서로 다른 물질을 섞었을 때 물질의 성질 변화</span>
+  <ol id="steps">
+    <li data-k="1">가루 넣기</li><li data-k="2">식초 붓기</li><li data-k="3">풍선 씌우기</li><li data-k="4">동시에 세우기</li><li data-k="5">기록하기</li>
+  </ol>
+</section>
+
+<div id="card" hidden role="dialog" aria-live="polite"><button class="x" id="cardX" aria-label="관찰 카드 닫기">×</button><h3 id="cardT"></h3><ul id="cardL"></ul></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<nav id="bar" aria-label="실험 진행">
+  <button id="bAll" aria-label="책 전체 보기" title="책 전체 보기"><svg viewBox="0 0 24 24"><path d="M3 6c3-1.5 6-1.5 9 0v13c-3-1.5-6-1.5-9 0zM21 6c-3-1.5-6-1.5-9 0v13c3-1.5 6-1.5 9 0z"/></svg></button>
+  <div id="cap"><span id="capText"></span></div>
+  <button id="bSheet"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h7"/></svg>기록지</button>
+  <span class="sep"></span>
+  <button id="bSound" aria-label="소리 끄기"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg></button>
+  <button id="bReset" aria-label="처음부터 다시 하기"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 108-8 8 8 0 00-6 2.7"/><path d="M4 4v4h4"/></svg></button>
+</nav>
+
+<section id="pad" aria-label="시점 조절">
+  <div class="dpad">
+    <button data-spin="-1" aria-label="책 왼쪽으로 돌리기" title="왼쪽으로 돌리기 (Q)"><svg viewBox="0 0 24 24"><path d="M5 9a8 8 0 0114 1"/><path d="M5 4v5h5"/><path d="M8 17h8"/></svg></button>
+    <button data-tilt="-1" aria-label="위에서 내려다보기" title="위에서 보기 (↑)"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+    <button data-spin="1" aria-label="책 오른쪽으로 돌리기" title="오른쪽으로 돌리기 (E)"><svg viewBox="0 0 24 24"><path d="M19 9a8 8 0 00-14 1"/><path d="M19 4v5h-5"/><path d="M8 17h8"/></svg></button>
+    <button data-pan="-1,0" aria-label="화면 왼쪽으로 이동" title="왼쪽으로 이동 (←)"><svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></button>
+    <button class="home" id="bHome" aria-label="지금 단계의 처음 시점으로" title="처음 시점 (0)">처음<br>시점</button>
+    <button data-pan="1,0" aria-label="화면 오른쪽으로 이동" title="오른쪽으로 이동 (→)"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    <span></span>
+    <button data-tilt="1" aria-label="정면에서 바라보기" title="정면에서 보기 (↓)"><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+    <span></span>
+  </div>
+  <div class="zoom">
+    <button data-zoom="-1" aria-label="확대" title="확대 (+)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg></button>
+    <button data-zoom="1" aria-label="축소" title="축소 (-)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5"/></svg></button>
+  </div>
+</section>
+
+<div id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="paper">
+    <header>
+      <div>
+        <div class="pg">실험관찰 23쪽</div>
+        <h2 id="sheetTitle"><b>4</b>고무풍선과 삼각 플라스크 안의 변화를 관찰해 그림과 글로 나타내 봅시다.</h2>
+      </div>
+      <button class="btn" id="sheetClose">실험 화면으로</button>
+    </header>
+    <div class="modes" role="group" aria-label="기록 방법 고르기">
+      <button data-mode="check" aria-pressed="true">직접 골라 체크하기</button>
+      <button data-mode="flap" aria-pressed="false">가림막 열어 확인하기</button>
+    </div>
+    <p class="note" id="modeNote"></p>
+    <div class="tbl" id="tbl"></div>
+    <div class="actions" id="actions"></div>
+    <section class="block" aria-labelledby="sumT">
+      <h3 id="sumT"><span class="pill">정리해요</span>실험 결과로 알게 된 점을 써 봅시다.</h3>
+      <label for="sumText" style="font-size:13px;color:var(--sheet-mute)">내 생각을 먼저 써 보고, 예시 답과 비교해 봐요.</label>
+      <textarea id="sumText"></textarea>
+      <div class="example" id="example">
+        서로 다른 물질을 섞을 때 탄산수소 나트륨과 식초처럼 새로운 물질(이산화 탄소 기체)이 생기며 성질이 변하기도 하고, 밀가루와 식초처럼 성질이 변하지 않기도 합니다.
+        <button class="cover" id="exCover"><b>예시 답 보기</b>눌러서 가림막을 열어요</button>
+      </div>
+    </section>
+    <section class="block" aria-labelledby="selfT">
+      <h3 id="selfT"><span class="pill">스스로</span>평가하기</h3>
+      <div class="self" id="self"></div>
+    </section>
+  </div>
+</div>
+
+<div id="veil">실험관찰 책을 펼치는 중…</div>
+
+<script>
+(function(){
+  function showVeil(html){
+    var v = document.getElementById('veil'); if (!v) return;
+    v.classList.remove('gone');
+    v.innerHTML = '<div style="max-width:36ch;text-align:center;line-height:1.7;padding:0 16px">' + html + '</div>';
+  }
+  window.__showVeil = showVeil;
+  setTimeout(function(){
+    if (!window.__bookReady) showVeil('3D 그림을 불러오지 못했어요.<br>페이지를 새로고침해 보세요.<br><small>학교 인터넷에서 cdn.jsdelivr.net 접속이 막혀 있으면 보이지 않을 수 있어요.</small>');
+  }, 15000);
+  window.addEventListener('error', function(e){
+    if (!window.__bookReady) showVeil('3D 그림을 여는 중에 문제가 생겼어요.<br>새로고침해 보세요.<br><small>' + String(e.message || '').slice(0, 120) + '</small>');
+  });
+})();
+</script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const clamp = (x,a,b) => Math.min(b, Math.max(a, x));
+const lerp = (a,b,t) => a + (b-a)*t;
+const smooth = (a,b,x) => { const t = clamp((x-a)/(b-a),0,1); return t*t*(3-2*t); };
+const easeIO = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const easeOut = t => 1 - Math.pow(1-t,3);
+const easeBack = t => { const c1=1.4, c3=c1+1; return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2); };
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V = (x,y,z) => new THREE.Vector3(x,y,z);
+const hdist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+
+const COL = { ink:'#2a2833', paper:'#f8f5ee', accent:'#d9572f', accentSoft:'#fbe3d5', mute:'#7a7482', co2:'#2f7dff', ok:'#2e7d55', line:'#e0662f' };
+const F = {
+  serif:'"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif',
+  sans:'"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+  hand:'"Nanum Pen Script","Gaegu","Apple SD Gothic Neo",cursive'
+};
+const INK = new THREE.Color(COL.ink);
+
+/* ================= renderer ================= */
+const canvas = $('#c');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias:true }); }
+catch (e) { window.__showVeil('이 기기에서는 3D 그래픽을 켤 수 없어요. 브라우저의 하드웨어 가속을 켜 주세요.'); throw e; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); window.__showVeil('그래픽이 잠시 멈췄어요.<br>페이지를 새로고침해 주세요.'); });
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e4dccd');
+scene.fog = new THREE.Fog('#e4dccd', 10, 22);
+const camera = new THREE.PerspectiveCamera(38, 1.6, 0.05, 80);
+camera.position.set(1.2, 4.5, 6.0);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 1.0; controls.maxDistance = 11; controls.maxPolarAngle = 1.36;
+controls.screenSpacePanning = false;
+controls.mouseButtons = { LEFT:-1, MIDDLE:THREE.MOUSE.DOLLY, RIGHT:THREE.MOUSE.ROTATE };
+controls.touches = { ONE:-1, TWO:THREE.TOUCH.DOLLY_ROTATE };
+controls.target.set(1.2, 0.8, 0.1);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+scene.add(new THREE.HemisphereLight(0xfff8ee, 0xb7aa98, 1.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.55);
+sun.position.set(-3.4, 6.8, 4.2);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-4, right:4, top:4, bottom:-4, near:1, far:18 });
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+/* ================= ink-hatching materials ================= */
+const BEND_GLSL = `
+uniform float uBend; uniform float uNeck; uniform float uLen; uniform float uRad; uniform float uFlat; uniform float uArc;
+void bendIt(inout vec3 p, inout vec3 n){
+  float t = p.y;
+  float bf = smoothstep(0.10, 0.26, t);
+  float rs = mix(1.0, uRad, bf);
+  float fs = mix(1.0, uFlat, bf);
+  p.x *= rs; p.z *= rs*fs;
+  n = normalize(vec3(n.x/max(rs,0.01), n.y/max(uLen,0.01), n.z/max(rs*fs,0.01)));
+  float L = t*uLen;
+  float s = max(L-uNeck, 0.0);
+  float sa = min(s, uArc);
+  float a = uBend*sa;
+  float c = cos(a); float sn = sin(a);
+  vec3 sp = vec3(0.0, L, 0.0);
+  if (abs(uBend) > 1e-4) sp = vec3(-(1.0-c)/uBend, min(L,uNeck) + sn/uBend, 0.0) + vec3(-sn, c, 0.0)*(s - sa);
+  p = sp + vec3(c, sn, 0.0)*p.x + vec3(0.0, 0.0, p.z);
+  n = vec3(n.x*c - n.y*sn, n.x*sn + n.y*c, n.z);
+}
+`;
+const HATCH_UNI = `
+uniform vec3 uInk; uniform float uDensity; uniform vec3 uDir1; uniform vec3 uDir2;
+uniform float uMode; uniform float uRadius; uniform float uHatch; uniform vec3 uGlow;
+varying vec3 vHObj;
+`;
+const HATCH_OUT = `
+float hLum = dot(outgoingLight, vec3(0.3333));
+float hBase = max(dot(diffuseColor.rgb, vec3(0.3333)), 0.03);
+float hShade = clamp(hLum / hBase, 0.0, 1.3);
+float hDark = clamp(1.0 - hShade, 0.0, 1.0);
+float hu1 = (uMode < 0.5 ? dot(vHObj, uDir1) : atan(vHObj.z, vHObj.x) * uRadius) * uDensity;
+float ha1 = fwidth(hu1);
+float hd1 = abs(fract(hu1) - 0.5);
+float hw1 = 0.5 * mix(0.10, 0.66, hDark);
+float hl1 = 1.0 - smoothstep(hw1 - ha1, hw1 + ha1, hd1);
+hl1 *= 1.0 - smoothstep(0.22, 0.65, ha1);
+float hu2 = dot(vHObj, uDir2) * uDensity * 1.15;
+float ha2 = fwidth(hu2);
+float hd2 = abs(fract(hu2) - 0.5);
+float hw2 = 0.5 * 0.55 * smoothstep(0.40, 0.95, hDark);
+float hl2 = (1.0 - smoothstep(hw2 - ha2, hw2 + ha2, hd2)) * step(0.004, hw2);
+hl2 *= 1.0 - smoothstep(0.22, 0.65, ha2);
+float hInk = max(hl1, hl2) * uHatch;
+vec3 hCol = mix(diffuseColor.rgb * mix(0.84, 1.02, clamp(hShade, 0.0, 1.0)), outgoingLight, 0.32) + uGlow;
+gl_FragColor = vec4(mix(hCol, uInk, hInk * 0.82), diffuseColor.a);
+`;
+function hatchMat(o){
+  const m = new THREE.MeshLambertMaterial({ color:o.color, transparent:!!o.transparent, map:o.map||null });
+  const u = {
+    uInk:{value:INK}, uDensity:{value:o.density ?? 40},
+    uDir1:{value:V(...(o.dir1||[1,0,0.4])).normalize()},
+    uDir2:{value:V(...(o.dir2||[0,1,0.3])).normalize()},
+    uMode:{value:o.cyl?1:0}, uRadius:{value:o.radius ?? 0.3}, uHatch:{value:o.amount ?? 1},
+    uGlow:{value:new THREE.Color(0,0,0)}
+  };
+  if (o.bend) Object.assign(u, o.bend);
+  m.userData.u = u;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    let vs = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vHObj;\n' + (o.bend ? BEND_GLSL : ''));
+    if (o.bend){
+      vs = vs.replace('#include <beginnormal_vertex>',
+        'vec3 objectNormal = vec3(normal);\nvec3 bentPos = vec3(position);\nbendIt(bentPos, objectNormal);\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3(tangent.xyz);\n#endif')
+        .replace('#include <begin_vertex>', 'vec3 transformed = bentPos;\nvHObj = vec3(position.x*uRad, position.y*uLen, position.z*uRad);');
+    } else {
+      vs = vs.replace('#include <begin_vertex>', '#include <begin_vertex>\nvHObj = transformed;');
+    }
+    sh.vertexShader = vs;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + HATCH_UNI)
+      .replace('#include <opaque_fragment>', HATCH_OUT);
+  };
+  m.customProgramCacheKey = () => 'hatch' + (o.bend ? 'B' : '');
+  return m;
+}
+function bendDepth(U){
+  const m = new THREE.MeshDepthMaterial({ depthPacking:THREE.RGBADepthPacking });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + BEND_GLSL)
+      .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position);\nvec3 bnT = vec3(normal);\nbendIt(transformed, bnT);');
+  };
+  m.customProgramCacheKey = () => 'bendDepth';
+  return m;
+}
+function hullMat(U){
+  return new THREE.ShaderMaterial({
+    uniforms:{ ...U, uOut:{value:0.0075}, uInk:{value:INK} },
+    side:THREE.BackSide,
+    vertexShader: BEND_GLSL + `
+uniform float uOut;
+void main(){ vec3 p = position; vec3 n = normal; bendIt(p, n); p += normalize(n)*uOut;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+    fragmentShader:`
+uniform vec3 uInk;
+void main(){ gl_FragColor = vec4(uInk, 1.0);
+#include <colorspace_fragment>
+}`
+  });
+}
+const lineMats = [];
+function lineMat(width, color){
+  const lm = new LineMaterial({ color:(color ? new THREE.Color(color) : INK).getHex(), linewidth:width });
+  lm.resolution.set(innerWidth || 1280, innerHeight || 800); lineMats.push(lm); return lm;
+}
+function inkEdges(geo, width=1.5, thresh=25){
+  return new LineSegments2(new LineSegmentsGeometry().fromEdgesGeometry(new THREE.EdgesGeometry(geo, thresh)), lineMat(width));
+}
+function ringLines(rings, width=1.3, color){
+  const pts = [];
+  for (const [r, y] of rings){ const n = 72; for (let i=0;i<n;i++){ const a0 = i/n*Math.PI*2, a1 = (i+1)/n*Math.PI*2; pts.push(Math.sin(a0)*r, y, Math.cos(a0)*r, Math.sin(a1)*r, y, Math.cos(a1)*r); } }
+  return new LineSegments2(new LineSegmentsGeometry().setPositions(pts), lineMat(width, color));
+}
+function withEdges(mesh, width, thresh){ mesh.add(inkEdges(mesh.geometry, width, thresh)); return mesh; }
+
+const FRES_VS = `varying vec3 vN; varying vec3 vV; varying float vNy; varying float vY;
+void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); vNy = normal.y; vY = position.y; gl_Position = projectionMatrix*mv; }`;
+function glassMat(tint='#dde8ec'){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uInk:{value:INK}, uTint:{value:new THREE.Color(tint)} },
+    transparent:true, depthWrite:false, side:THREE.DoubleSide,
+    vertexShader:FRES_VS,
+    fragmentShader:`uniform vec3 uInk; uniform vec3 uTint; varying vec3 vN; varying vec3 vV; varying float vNy; varying float vY;
+void main(){ vec3 n = normalize(vN); float f = 1.0 - abs(dot(n, normalize(vV)));
+  float rim = smoothstep(0.62, 0.97, f);
+  float glint = smoothstep(0.045, 0.0, abs(n.x - 0.55)) * 0.22;
+  vec3 c = mix(uTint, uInk, rim*0.9); c = mix(c, vec3(1.0), glint);
+  gl_FragColor = vec4(c, 0.06 + 0.8*rim + glint*0.5);
+#include <colorspace_fragment>
+}`
+  });
+}
+function liquidMat(){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uInk:{value:INK}, uCol:{value:new THREE.Color('#e2b84c')}, uCloudCol:{value:new THREE.Color('#f1ede2')}, uCloud:{value:0}, uLevel:{value:0} },
+    transparent:true, depthWrite:false, side:THREE.DoubleSide,
+    vertexShader:FRES_VS,
+    fragmentShader:`uniform vec3 uInk; uniform vec3 uCol; uniform vec3 uCloudCol; uniform float uCloud; uniform float uLevel;
+varying vec3 vN; varying vec3 vV; varying float vNy; varying float vY;
+void main(){ if (vY > uLevel) discard;
+  float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  vec3 c = mix(uCol, uCloudCol, uCloud);
+  c *= mix(1.0, 1.1, smoothstep(0.6, 0.95, vNy));
+  float rim = smoothstep(0.75, 0.98, f);
+  c = mix(c, uInk, rim*0.55);
+  gl_FragColor = vec4(c, mix(0.55, 0.8, uCloud) + 0.25*rim);
+#include <colorspace_fragment>
+}`
+  });
+}
+const bubbleMat = new THREE.ShaderMaterial({
+  uniforms:{ uInk:{value:INK} }, transparent:true, depthWrite:false,
+  vertexShader:`varying vec3 vN; varying vec3 vV;
+void main(){ vec4 mv = modelViewMatrix * instanceMatrix * vec4(position,1.0);
+  vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+  fragmentShader:`uniform vec3 uInk; varying vec3 vN; varying vec3 vV;
+void main(){ vec3 n = normalize(vN); float f = 1.0 - abs(dot(n, normalize(vV)));
+  float rim = smoothstep(0.45, 0.95, f);
+  float spec = smoothstep(0.82, 0.98, dot(n, normalize(vec3(-0.4,0.6,0.7))));
+  vec3 c = mix(vec3(1.0), uInk, rim*0.85); c = mix(c, vec3(1.0), spec);
+  gl_FragColor = vec4(c, 0.22 + 0.7*rim + spec*0.6);
+#include <colorspace_fragment>
+}`
+});
+function ribbonMat(){
+  return new THREE.ShaderMaterial({
+    uniforms:{ uTime:{value:0}, uOp:{value:0}, uCol:{value:new THREE.Color(COL.co2)} },
+    transparent:true, depthWrite:false,
+    vertexShader:`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`uniform float uTime; uniform float uOp; uniform vec3 uCol; varying vec2 vUv;
+void main(){ float flow = fract(vUv.x*7.0 - uTime*1.3);
+  float dots = smoothstep(0.16, 0.0, abs(flow - 0.5));
+  float edge = smoothstep(0.0, 0.06, vUv.x) * smoothstep(1.0, 0.86, vUv.x);
+  vec3 c = mix(uCol, vec3(0.85, 0.95, 1.0), dots*0.7);
+  gl_FragColor = vec4(c, uOp * edge * (0.55 + 0.45*dots));
+#include <colorspace_fragment>
+}`
+  });
+}
+
+/* ================= canvas textures ================= */
+function makeCanvas(w,h){
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = ANISO;
+  return { cv, ctx, tex, w, h };
+}
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function wrap(c, text, maxW){
+  const out = []; let line = '';
+  for (const w of text.split(' ')){
+    const t = line ? line + ' ' + w : w;
+    if (c.measureText(t).width > maxW && line){ out.push(line); line = w; } else line = t;
+  }
+  if (line) out.push(line);
+  return out;
+}
+function seeded(seed){ let s = seed; return () => (s = (s*16807) % 2147483647) / 2147483647; }
+function paperBg(c, W, H, side){
+  c.fillStyle = COL.paper; c.fillRect(0,0,W,H);
+  const rnd = seeded(side<0?7:11);
+  for (let i=0;i<2600;i++){ c.fillStyle = `rgba(90,70,50,${0.02+rnd()*0.03})`; c.fillRect(rnd()*W, rnd()*H, 1.5+rnd()*2, 1.5+rnd()*2); }
+  const g = side<0 ? c.createLinearGradient(W-170,0,W,0) : c.createLinearGradient(170,0,0,0);
+  g.addColorStop(0,'rgba(70,55,40,0)'); g.addColorStop(1,'rgba(70,55,40,0.2)');
+  c.fillStyle = g; c.fillRect(0,0,W,H);
+}
+function dotTexture(){
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d');
+  c.beginPath(); c.arc(32,32,24,0,Math.PI*2); c.fillStyle = '#ffffff'; c.fill();
+  c.lineWidth = 7; c.strokeStyle = COL.ink; c.stroke();
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const DOT = dotTexture();
+function labelPlane(text, w, h, px, color=COL.ink){
+  const cnv = makeCanvas(256, 128); const c = cnv.ctx;
+  c.fillStyle = color; c.font = `700 ${px}px ${F.serif}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, 128, 66);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({ map:cnv.tex, transparent:true, depthWrite:false }));
+  m.renderOrder = 6; return m;
+}
+const proxyMat = new THREE.MeshBasicMaterial({ transparent:true, opacity:0, depthWrite:false, colorWrite:false });
+
+/* ================= desk + workbook ================= */
+const PAGE_W = 2.1, PAGE_H = 3.0, PAGE_Y = 0.219;
+{
+  const d = makeCanvas(1024,1024), c = d.ctx;
+  c.fillStyle = '#d3bd9c'; c.fillRect(0,0,1024,1024);
+  const rnd = seeded(3);
+  for (let i=0;i<170;i++){
+    const y0 = rnd()*1024, amp = 4+rnd()*10, ph = rnd()*6;
+    c.strokeStyle = `rgba(140,105,70,${0.05+rnd()*0.12})`; c.lineWidth = 1+rnd()*3; c.beginPath();
+    for (let x=0;x<=1024;x+=16){ const y = y0 + Math.sin(x/120+ph)*amp; x?c.lineTo(x,y):c.moveTo(x,y); }
+    c.stroke();
+  }
+  d.tex.wrapS = d.tex.wrapT = THREE.RepeatWrapping; d.tex.repeat.set(3,3);
+  const desk = new THREE.Mesh(new THREE.PlaneGeometry(26,26), new THREE.MeshLambertMaterial({ map:d.tex }));
+  desk.rotation.x = -Math.PI/2; desk.receiveShadow = true; scene.add(desk);
+  const m = makeCanvas(512,512), mc = m.ctx;
+  mc.fillStyle = '#a6bbae'; mc.fillRect(0,0,512,512);
+  mc.strokeStyle = 'rgba(255,255,255,0.22)'; mc.lineWidth = 2;
+  for (let i=0;i<=512;i+=64){ mc.beginPath(); mc.moveTo(i,0); mc.lineTo(i,512); mc.moveTo(0,i); mc.lineTo(512,i); mc.stroke(); }
+  m.tex.wrapS = m.tex.wrapT = THREE.RepeatWrapping; m.tex.repeat.set(7,5);
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(7.2,0.02,5.0), new THREE.MeshLambertMaterial({ map:m.tex }));
+  mat.position.set(0.15,0.01,0.1); mat.rotation.y = 0.035; mat.receiveShadow = true; scene.add(mat);
+}
+const book = new THREE.Group(); scene.add(book);
+{
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(4.36,0.045,3.16), hatchMat({ color:'#5b8f7a', dir1:[1,0,1], density:60, amount:.6 }));
+  cover.position.y = 0.0425; cover.castShadow = cover.receiveShadow = true; book.add(withEdges(cover, 1.4));
+  for (const s of [-1,1]){
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(1.82,0.152,3.02), hatchMat({ color:'#f1ece2', dir1:[0,1,0], density:150, amount:.7 }));
+    blk.position.set(s*1.19, 0.141, 0); blk.castShadow = blk.receiveShadow = true; book.add(withEdges(blk, 1.2));
+  }
+  const fill = new THREE.Mesh(new THREE.BoxGeometry(0.58,0.09,3.0), new THREE.MeshLambertMaterial({ color:'#d9d3c7' }));
+  fill.position.y = 0.11; book.add(fill);
+}
+function makePage(side){
+  const g = new THREE.PlaneGeometry(PAGE_W, PAGE_H, 64, 1); g.rotateX(-Math.PI/2);
+  const pos = g.attributes.position;
+  for (let i=0;i<pos.count;i++){
+    const x = pos.getX(i); const d = side<0 ? (PAGE_W/2 - x) : (x + PAGE_W/2);
+    const k = 1 - smooth(0, 0.28, d); pos.setY(i, -0.06*k*k);
+  }
+  g.computeVertexNormals();
+  const cnv = makeCanvas(1400, 2000);
+  const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map:cnv.tex }));
+  mesh.position.set(side*PAGE_W/2, PAGE_Y, 0); mesh.receiveShadow = true;
+  book.add(mesh);
+  return { side, mesh, cnv, hits:[] };
+}
+const pageL = makePage(-1), pageR = makePage(1);
+
+/* ================= shared lab geometry ================= */
+const BOARD_TOP = PAGE_Y + 0.063;
+const LINE = 0.25, TOL = 0.02, MOUTH_Y = 1.04, BAL_Y = MOUTH_Y - 0.035;
+const rIn = y => y < 0.07 ? 0.343 : y < 0.80 ? lerp(0.343, 0.088, (y-0.07)/0.73) : 0.086;
+const FLASK_PROFILE = [[0,0],[0.33,0],[0.355,0.012],[0.36,0.04],[0.356,0.07],[0.105,0.80],[0.098,0.83],[0.098,1.0],[0.113,1.008],[0.116,1.03],[0.104,1.04],[0.092,1.036]];
+const flaskGeo = new THREE.LatheGeometry(FLASK_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 56);
+const LIQ_MAX = 0.46;
+const liqGeo = new THREE.LatheGeometry([[0,0.012],[0.33,0.012],[rIn(0.04),0.04],[rIn(0.07),0.07],[rIn(0.2),0.2],[rIn(0.35),0.35],[rIn(LIQ_MAX),LIQ_MAX]].map(p=>new THREE.Vector2(Math.max(0,p[0]-0.004),p[1])), 56);
+const discGeo = new THREE.CircleGeometry(1, 56).rotateX(-Math.PI/2);
+
+/* pop-up groups for each stage of the bench */
+function popGroup(){ const g = new THREE.Group(); g.userData.pop = { k:0, to:0 }; g.scale.y = 0.001; g.visible = false; book.add(g); return g; }
+function popTo(g, to){ g.userData.pop.to = to; if (to > 0) g.visible = true; }
+const g1 = popGroup(), g2 = popGroup();
+
+/* ---------- stage 1: funnels on stands, dishes, spoons ---------- */
+const STN = [
+  { x:0.78, kind:'flour', name:'밀가루', powderCol:'#fffdf6' },
+  { x:1.62, kind:'soda',  name:'탄산수소 나트륨', powderCol:'#ffffff' }
+];
+const FUN_Z = -0.38, STEM_B = PAGE_Y + 0.95;
+const FUN_PROFILE = [[0.082,0],[0.088,0.01],[0.09,0.22],[0.29,0.48],[0.305,0.5],[0.296,0.505]];
+const funnelGeo = new THREE.LatheGeometry(FUN_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 48);
+const rFun = yl => yl < 0.22 ? 0.07 : lerp(0.07, 0.27, (yl-0.22)/0.28);
+const dishGeo = new THREE.LatheGeometry([[0,0],[0.22,0],[0.235,0.01],[0.24,0.07],[0.232,0.072]].map(p=>new THREE.Vector2(p[0],p[1])), 48);
+const moundGeo = new THREE.LatheGeometry([[0,0],[0.2,0],[0.19,0.012],[0.12,0.04],[0,0.052]].map(p=>new THREE.Vector2(p[0],p[1])), 40);
+
+for (const [i, st] of STN.entries()){
+  const fx = st.x, fz = FUN_Z;
+  // ring stand
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.34,0.04,0.3), hatchMat({ color:'#6b6670', density:50, amount:.6 }));
+  base.position.set(fx + 0.27, PAGE_Y + 0.02, fz - 0.05); base.castShadow = base.receiveShadow = true; g1.add(withEdges(base, 1.2));
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,1.55,16), hatchMat({ color:'#8a8590', cyl:true, radius:0.02, density:300, amount:.5 }));
+  rod.position.set(fx + 0.33, PAGE_Y + 0.8, fz - 0.05); rod.castShadow = true; g1.add(rod);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.03,0.04), hatchMat({ color:'#6b6670', density:60 }));
+  arm.position.set(fx + 0.25, STEM_B + 0.33, fz - 0.03); g1.add(withEdges(arm, 1.1));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.205, 0.014, 8, 40).rotateX(Math.PI/2), hatchMat({ color:'#6b6670', density:60 }));
+  ring.position.set(fx, STEM_B + 0.33, fz); ring.castShadow = true; g1.add(ring);
+  // powder funnel
+  const fun = new THREE.Mesh(funnelGeo, glassMat()); fun.position.set(fx, STEM_B, fz); fun.renderOrder = 5; g1.add(fun);
+  fun.add(ringLines([[0.302,0.502],[0.09,0.22],[0.085,0.002]], 1.3));
+  // dish with powder + its own spoon
+  const dx = fx - 0.17, dz = 0.62;
+  const dish = new THREE.Mesh(dishGeo, glassMat()); dish.position.set(dx, PAGE_Y, dz); dish.renderOrder = 5; g1.add(dish);
+  dish.add(ringLines([[0.236,0.07],[0.222,0.002]], 1.2));
+  const mound = new THREE.Mesh(moundGeo, hatchMat({ color:st.powderCol, dir1:[1,0,0.3], density:110, amount:.55 }));
+  mound.position.set(dx, PAGE_Y + 0.006, dz); mound.castShadow = true; g1.add(mound);
+  const dprox = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.12,16), proxyMat); dprox.position.set(dx, PAGE_Y + 0.06, dz); g1.add(dprox);
+  st.funnel = fun; st.funPos = V(fx, STEM_B, fz); st.dish = { pos:V(dx, PAGE_Y, dz), mound, proxy:dprox };
+  st.spoons = 0; st.balloon = null; st.grainsIn = 0;
+}
+function makeSpoon(st, i){
+  const g = new THREE.Group();
+  const mat = hatchMat({ color:'#c9c6cf', density:120, amount:.5 });
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 10, 0, Math.PI*2, Math.PI/2, Math.PI/2), mat);
+  bowl.scale.set(1, 0.55, 0.8); bowl.castShadow = true;
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.012, 0.03).translate(0.2, 0.0, 0), mat); handle.castShadow = true; withEdges(handle, 1.1);
+  const heap = new THREE.Mesh(new THREE.SphereGeometry(0.044, 14, 8), hatchMat({ color:st.powderCol, density:120, amount:.5 }));
+  heap.scale.set(1, 0.55, 0.8); heap.position.y = 0.004; heap.visible = false;
+  const prox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.16).translate(0.15, 0.02, 0), proxyMat);
+  g.add(bowl, handle, heap, prox);
+  const home = V(st.dish.pos.x + 0.02, PAGE_Y + 0.075, st.dish.pos.z + 0.02);
+  g.position.copy(home); g.rotation.y = -0.5 - i*0.25;
+  g1.add(g);
+  return { st, i, g, heap, prox, home, homeRotY: g.rotation.y, state:'home', t:0, target:home.clone(), loaded:false };
+}
+const spoons = STN.map((st, i) => (st.spoon = makeSpoon(st, i)));
+
+/* ---------- stage 2: board, flasks, vinegar bottle ---------- */
+{
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.72,0.06,1.0), hatchMat({ color:'#ece2cf', dir1:[1,0,0.35], density:55, amount:.8 }));
+  board.position.set(1.19, PAGE_Y+0.033, -0.22); board.castShadow = board.receiveShadow = true; g2.add(withEdges(board, 1.6));
+}
+const FLASK_X = [0.8, 1.6], FLASK_Z = -0.25;
+function makeFlask(x, idx){
+  const g = new THREE.Group(); g.position.set(x, BOARD_TOP, FLASK_Z); g2.add(g);
+  const glass = new THREE.Mesh(flaskGeo, glassMat()); glass.renderOrder = 5; g.add(glass);
+  glass.add(ringLines([[0.335,0.002],[0.358,0.06],[0.101,0.815],[0.114,1.006],[0.112,1.036]], 1.3));
+  const liqMat = liquidMat();
+  const liq = new THREE.Mesh(liqGeo, liqMat); liq.renderOrder = 1; g.add(liq);
+  const surf = new THREE.Mesh(discGeo, liqMat); surf.renderOrder = 1; surf.visible = false; g.add(surf);
+  const surfRing = ringLines([[1, 0]], 1.1); surf.add(surfRing);
+  // marks + the orange reference line
+  for (const [y,t] of [[0.16,'100'],[0.38,'200'],[0.49,'250']]){
+    const r = lerp(0.356, 0.105, (y-0.07)/0.73) + 0.004;
+    const pts = []; for (let a=-0.22;a<=0.08;a+=0.03) pts.push(V(Math.sin(a)*r, y, Math.cos(a)*r));
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color:INK })));
+    const lab = labelPlane(t, 0.12, 0.06, 60); const a = -0.38;
+    lab.position.set(Math.sin(a)*(r+0.01), y, Math.cos(a)*(r+0.01)); lab.rotation.order = 'YXZ'; lab.rotation.y = a; lab.rotation.x = -0.38; g.add(lab);
+  }
+  const rl = lerp(0.356, 0.105, (LINE-0.07)/0.73) + 0.005;
+  g.add(ringLines([[rl, LINE]], 2.4, COL.line));
+  const lab = labelPlane('기준선', 0.2, 0.08, 54, COL.line); const a = 0.42;
+  lab.position.set(Math.sin(a)*(rl+0.02), LINE + 0.035, Math.cos(a)*(rl+0.02)); lab.rotation.order = 'YXZ'; lab.rotation.y = a; lab.rotation.x = -0.38; g.add(lab);
+  const proxy = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.9, 0.8), proxyMat); proxy.position.y = 0.95; g.add(proxy);
+  return { idx, g, glass, liq, surf, liqMat, proxy, level:0, ok:false, balloon:null, kind:null, mouth:V(x, BOARD_TOP + MOUTH_Y, FLASK_Z) };
+}
+const flasks = FLASK_X.map((x, i) => makeFlask(x, i));
+function setLevel(f, lv){
+  f.level = lv; f.liqMat.uniforms.uLevel.value = lv;
+  f.surf.visible = lv > 0.014; f.liq.visible = lv > 0.014;
+  f.surf.position.y = lv; const r = Math.max(0.01, rIn(lv) - 0.006); f.surf.scale.set(r, 1, r);
+}
+flasks.forEach(f => setLevel(f, 0));
+
+/* vinegar bottle */
+const BOTTLE_PROFILE = [[0,0],[0.115,0],[0.124,0.015],[0.125,0.4],[0.1,0.49],[0.045,0.55],[0.043,0.62],[0.05,0.628],[0.05,0.66],[0,0.66]];
+const bottle = (() => {
+  const g = new THREE.Group();
+  const geo = new THREE.LatheGeometry(BOTTLE_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 40);
+  const body = new THREE.Mesh(geo, hatchMat({ color:'#c89a45', cyl:true, radius:0.12, density:160, dir2:[0,1,0.2], amount:.6 }));
+  body.castShadow = true; g.add(body);
+  g.add(ringLines([[0.125,0.4],[0.12,0.015],[0.05,0.66]], 1.2));
+  const lc = makeCanvas(512, 128); const c = lc.ctx;
+  c.fillStyle = '#fbf6ea'; c.fillRect(0,0,512,128); c.strokeStyle = COL.ink; c.lineWidth = 6; c.strokeRect(3,3,506,122);
+  c.fillStyle = COL.ink; c.font = `700 64px ${F.serif}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('식초', 128, 66); c.fillText('식초', 384, 66);
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(0.128,0.128,0.17,40,1,true), new THREE.MeshLambertMaterial({ map:lc.tex }));
+  label.position.y = 0.22; g.add(label);
+  const prox = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.75,12), proxyMat); prox.position.y = 0.35; g.add(prox);
+  const home = V(1.2, PAGE_Y, 0.72);
+  g.position.copy(home); g2.add(g);
+  const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 1, 10, 1, true).translate(0, -0.5, 0),
+    new THREE.MeshBasicMaterial({ color:'#e2b84c', transparent:true, opacity:0.85 }));
+  stream.visible = false; book.add(stream);
+  return { g, prox, home, stream, state:'home', target:home.clone(), tilt:0, pourFlask:null, held:false };
+})();
+
+/* ---------- balloons ---------- */
+const BAL_PROFILE = [[0.122,0],[0.129,0.012],[0.123,0.025],[0.114,0.03],[0.112,0.09],[0.092,0.14],[0.086,0.17],[0.16,0.24],[0.25,0.34],[0.305,0.46],[0.318,0.56],[0.30,0.67],[0.25,0.77],[0.17,0.86],[0.08,0.925],[0.02,0.945],[0,0.95]];
+const balGeo = new THREE.LatheGeometry(BAL_PROFILE.map(p=>new THREE.Vector2(p[0],p[1])), 44);
+function profileR(t){
+  for (let i=1;i<BAL_PROFILE.length;i++){ const a = BAL_PROFILE[i-1], b = BAL_PROFILE[i];
+    if (t <= b[1]) return a[0] + (b[0]-a[0]) * (t-a[1]) / Math.max(b[1]-a[1], 1e-6); }
+  return 0;
+}
+const LIMP = { bend:11.0, len:0.8, rad:0.56, flat:0.34 };
+const POSES = {
+  lying:  { bend:0,    len:0.8, rad:0.56, flat:0.42, rot:[Math.PI/2, 0, 0] },
+  funnel: { bend:0,    len:0.8, rad:0.5,  flat:0.72, rot:[Math.PI, 0, 0] },
+  held:   { bend:12.5, len:0.8, rad:0.56, flat:0.4,  rot:[0, 0, 0] },
+  fitted: { bend:LIMP.bend, len:LIMP.len, rad:LIMP.rad, flat:LIMP.flat, rot:[0, 0, 0] }
+};
+function makeBalloon(i){
+  const U = { uBend:{value:0}, uNeck:{value:0.14}, uArc:{value:0.25}, uLen:{value:0.8}, uRad:{value:0.56}, uFlat:{value:0.42} };
+  const mat = hatchMat({ color:'#d63a40', bend:U, cyl:true, radius:0.3, density:44, dir2:[0,1,0.25], transparent:true });
+  const mesh = new THREE.Mesh(balGeo, mat); mesh.castShadow = true; mesh.customDepthMaterial = bendDepth(U);
+  mesh.renderOrder = 3; mesh.frustumCulled = false;
+  const hull = new THREE.Mesh(balGeo, hullMat(U)); hull.frustumCulled = false;
+  const g = new THREE.Group(); g.add(mesh, hull); scene.add(g);
+  const proxy = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8), proxyMat); scene.add(proxy);
+  // powder grains that end up inside this balloon
+  const N = 150, pos = new Float32Array(N*3), P = [];
+  const rnd = seeded(5 + i*4);
+  for (let k=0;k<N;k++) P.push({ t:lerp(0.62,0.86,rnd()), a:rnd()*6.283, r:Math.sqrt(rnd()), delay:rnd()*0.9, ph:0, x:0,y:-50,z:0, vy:0, fx:0,fy:0,fz:0, life:0, done:false });
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size:0.045, map:DOT, alphaTest:0.5, color:'#ffffff' }));
+  pts.frustumCulled = false; scene.add(pts);
+  const b = { i, U, mat, mesh, hull, g, proxy, N, pos, P, geo, pts, station:null, flask:null, visibleN:0, state:'lying', tw:null, follow:null, pose:'lying', press:0, hits:0, settled:0 };
+  applyPose(b, 'lying');
+  return b;
+}
+function applyPose(b, name, rotY=0){
+  const P = POSES[name]; b.pose = name; b.g.rotation.order = 'YXZ';
+  b.U.uBend.value = P.bend; b.U.uLen.value = P.len; b.U.uRad.value = P.rad; b.U.uFlat.value = P.flat;
+  b.g.rotation.set(P.rot[0], rotY, P.rot[2]);
+}
+function tweenPose(b, name, pos, dur=0.5, rotY=0){
+  const P = POSES[name];
+  const e = new THREE.Euler(P.rot[0], rotY, P.rot[2], 'YXZ');
+  b.tw = { t:0, dur, p0:b.g.position.clone(), p1:pos.clone(), q0:b.g.quaternion.clone(), q1:new THREE.Quaternion().setFromEuler(e),
+    u0:{ bend:b.U.uBend.value, len:b.U.uLen.value, rad:b.U.uRad.value, flat:b.U.uFlat.value }, u1:P };
+  b.pose = name;
+}
+const balloons = [makeBalloon(0), makeBalloon(1)];
+const LYING1 = [V(0.98, PAGE_Y + 0.1, 0.18), V(1.82, PAGE_Y + 0.1, 0.18)], YAW1 = [0.85, 0.85];
+const LYING2 = [V(0.62, PAGE_Y + 0.1, 0.4), V(1.78, PAGE_Y + 0.1, 0.4)], YAW2 = [-0.35, 0.35];
+balloons.forEach((b, i) => { b.g.position.copy(LYING1[i]); applyPose(b, 'lying', YAW1[i]); });
+
+const _bp = new THREE.Vector3();
+function bendPoint(U, px, t, pz, out){
+  const bf = smooth(0.10, 0.26, t), rs = lerp(1, U.uRad.value, bf), fs = lerp(1, U.uFlat.value, bf);
+  const x = px*rs, z = pz*rs*fs, L = t*U.uLen.value, k = U.uBend.value;
+  const sl = Math.max(L - U.uNeck.value, 0), sa = Math.min(sl, U.uArc.value);
+  const a = k * sa, c = Math.cos(a), s = Math.sin(a);
+  let sx = 0, sy = L;
+  if (Math.abs(k) > 1e-4){ sx = -(1-c)/k - s*(sl-sa); sy = Math.min(L, U.uNeck.value) + s/k + c*(sl-sa); }
+  return out.set(sx + c*x, sy + s*x, z);
+}
+function balloonWorld(b, t, out){ bendPoint(b.U, 0, t, 0, out); return out.applyMatrix4(b.g.matrixWorld); }
+
+/* grains falling from a spoon into a funnel */
+const NG = 220, gPos = new Float32Array(NG*3).fill(-50), G = Array.from({length:NG}, () => ({ on:false, x:0,y:0,z:0, vy:0, st:null }));
+const gGeo = new THREE.BufferGeometry(); gGeo.setAttribute('position', new THREE.BufferAttribute(gPos,3));
+const grains = new THREE.Points(gGeo, new THREE.PointsMaterial({ size:0.04, map:DOT, alphaTest:0.5, color:'#ffffff' }));
+grains.frustumCulled = false; scene.add(grains);
+const GRAINS_PER_SPOON = 40;
+
+/* flour sediment + soda effects (attached to whichever flask gets which powder) */
+const sediment = new THREE.Mesh(
+  new THREE.LatheGeometry([[0,0],[0.3,0],[0.325,0.006],[0.2,0.03],[0,0.04]].map(p=>new THREE.Vector2(p[0],p[1])), 40),
+  hatchMat({ color:'#faf7ee', dir1:[1,0,0.2], density:90, amount:.7 }));
+sediment.position.y = 0.012; sediment.scale.y = 0.001; sediment.visible = false;
+const NB = 160, bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8), bubbleMat, NB);
+bubbles.renderOrder = 2; bubbles.frustumCulled = false;
+const B = Array.from({length:NB}, () => ({ on:false, x:0,y:0,z:0, s:0, v:0, ph:Math.random()*6 }));
+const FOAM_MAX = 0.24;
+const foamCol = new THREE.Mesh(new THREE.CylinderGeometry(rIn(LINE+FOAM_MAX)-0.075, rIn(LINE)-0.06, FOAM_MAX, 48, 1, false).translate(0, FOAM_MAX/2, 0),
+  hatchMat({ color:'#f3efe3', dir1:[1,0.35,1], density:40, amount:.45 }));
+foamCol.position.y = LINE; foamCol.visible = false;
+const NF = 240, foamBits = new THREE.InstancedMesh(new THREE.SphereGeometry(1,10,8), hatchMat({ color:'#fbf9f2', dir1:[1,1,0], density:34, amount:.7 }), NF);
+foamBits.frustumCulled = false; foamBits.visible = false;
+const FB = Array.from({length:NF}, (_,i) => { const r = seeded(100+i); const side = i % 2 === 0; return { a:r()*6.283, rf: side ? 1 : Math.sqrt(r()), layer: side ? r() : 1, sz:r(), ph:r()*6 }; });
+const ribbonCurve = new THREE.CatmullRomCurve3([V(0,LINE+0.02,0), V(0.035,0.45,0.02), V(-0.025,0.72,-0.01), V(0,0.96,0), V(0.012,1.22,0), V(0,1.58,0)]);
+const ribbon = new THREE.Mesh(new THREE.TubeGeometry(ribbonCurve, 80, 0.032, 10, false), ribbonMat());
+ribbon.renderOrder = 4; ribbon.visible = false;
+const glow = new THREE.PointLight(0x3d8bff, 0, 1.9, 1.6); glow.position.set(0, 0.32, 0.06);
+const snapRing = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.014, 8, 40).rotateX(Math.PI/2), new THREE.MeshBasicMaterial({ color:COL.accent, transparent:true, opacity:0.9 }));
+snapRing.visible = false; scene.add(snapRing);
+
+/* ================= state ================= */
+const S = {
+  step:1, phase:'setup', tR:0, tau:-1, gas:0, inflate:0, emit:0, foam:0, cloud:0, flop:0,
+  spawnAcc:0, doneT:0, userCam:false, xrayUser:false, xrayK:0, cues:{},
+  inspected:{ flour:false, soda:false, vinegar:false }, sheetSeen:false, transT:-1
+};
+let flourSt = null, sodaSt = null;
+
+/* ================= pages ================= */
+function marker(c, x, y, n, status){
+  if (status === 'done'){ c.fillStyle = COL.ok; c.beginPath(); c.arc(x, y, 22, 0, Math.PI*2); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = 5; c.beginPath(); c.moveTo(x-10, y); c.lineTo(x-2, y+8); c.lineTo(x+11, y-8); c.stroke(); return; }
+  c.beginPath(); c.arc(x, y, 22, 0, Math.PI*2);
+  if (status === 'now'){ c.fillStyle = COL.accent; c.fill(); c.fillStyle = '#fff'; }
+  else { c.strokeStyle = COL.accent; c.lineWidth = 3; c.stroke(); c.fillStyle = COL.accent; }
+  c.font = `700 26px ${F.serif}`; c.textAlign = 'center'; c.fillText(String(n), x, y + 9); c.textAlign = 'left';
+}
+function stepStatus(n){ return S.step > n ? 'done' : S.step === n ? 'now' : 'todo'; }
+function drawLeft(){
+  const P = pageL, c = P.cnv.ctx, W = 1400, H = 2000; P.hits = [];
+  paperBg(c, W, H, -1);
+  const mL = 110, mR = 190, cw = W - mL - mR;
+  c.textBaseline = 'alphabetic';
+  c.fillStyle = COL.mute; c.font = `400 26px ${F.sans}`; c.fillText('실험관찰 · 2. 물질의 변화', mL, 92);
+  c.textAlign = 'right'; c.fillText('1. 서로 다른 물질을 섞으면 어떻게 될까?', W - mR, 92); c.textAlign = 'left';
+  c.strokeStyle = 'rgba(42,40,51,.18)'; c.lineWidth = 2; c.beginPath(); c.moveTo(mL,112); c.lineTo(W-mR,112); c.stroke();
+
+  c.fillStyle = COL.accent; rr(c, mL, 150, 170, 58, 29); c.fill();
+  c.fillStyle = '#fff'; c.font = `700 32px ${F.serif}`; c.fillText('탐구 활동', mL + 22, 191);
+  c.fillStyle = COL.ink; c.font = `700 50px ${F.serif}`;
+  c.fillText('서로 다른 물질을 섞었을 때', mL, 290); c.fillText('물질의 성질 변화 관찰하기', mL, 356);
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.serif}`;
+  c.fillText('목표  서로 다른 물질을 섞었을 때 성질이 어떻게 변하는지 관찰해요.', mL, 410);
+
+  let y = 476;
+  c.fillStyle = '#ebe6dc'; rr(c, mL, y - 34, 112, 46, 10); c.fill();
+  c.fillStyle = COL.ink; c.font = `700 26px ${F.sans}`; c.fillText('준비물', mL + 18, y - 2);
+  c.font = `400 28px ${F.serif}`;
+  for (const ln of wrap(c, '밀가루, 탄산수소 나트륨, 식초가 든 삼각 플라스크 2개, 고무풍선 2개, 분말 깔때기 2개, 약숟가락 2개, 실험복·보안경·실험용 장갑', cw - 136)){ c.fillText(ln, mL + 136, y); y += 42; }
+  y += 24;
+
+  // before the experiment: inspect cards
+  const bx = mL, bw = cw, bh = 150;
+  c.strokeStyle = 'rgba(42,40,51,.3)'; c.lineWidth = 2; c.setLineDash([10,7]); rr(c, bx, y, bw, bh, 18); c.stroke(); c.setLineDash([]);
+  c.fillStyle = COL.ink; c.font = `700 29px ${F.serif}`; c.fillText('실험하기 전', bx + 24, y + 46);
+  c.font = `400 26px ${F.serif}`; c.fillText('가루 접시와 식초병을 톡 눌러 특징을 관찰해요.', bx + 200, y + 46);
+  const items = [['flour','밀가루'],['soda','탄산수소 나트륨'],['vinegar','식초']];
+  let ix = bx + 24;
+  for (const [k, t] of items){
+    const on = S.inspected[k];
+    c.font = `700 26px ${F.sans}`; const tw = c.measureText(t).width + 70;
+    c.fillStyle = on ? COL.ok : '#fff'; rr(c, ix, y + 72, tw, 52, 26); c.fill();
+    c.strokeStyle = on ? COL.ok : 'rgba(42,40,51,.35)'; c.lineWidth = 2; rr(c, ix, y + 72, tw, 52, 26); c.stroke();
+    c.fillStyle = on ? '#fff' : COL.ink; c.fillText((on ? '✓ ' : '○ ') + t, ix + 20, y + 107);
+    P.hits.push({ x:ix, y:y+72, w:tw, h:52, on:() => inspect(k) });
+    ix += tw + 14;
+  }
+  y += bh + 50;
+
+  c.strokeStyle = COL.accent; c.lineWidth = 2.5; rr(c, mL, y - 34, 132, 46, 10); c.stroke();
+  c.fillStyle = COL.accent; c.font = `700 26px ${F.sans}`; c.fillText('실험해요', mL + 18, y - 2);
+  y += 56;
+  const steps = [
+    '고무풍선을 분말 깔때기에 끼우고, 밀가루와 탄산수소 나트륨을 각각 두 숟가락씩 넣어요.',
+    '삼각 플라스크 2개에 식초를 기준선까지 부어요.',
+    '가루를 넣은 고무풍선을 플라스크 입구에 씌워요.',
+    '두 고무풍선을 동시에 세워 가루를 식초 속에 넣어요.',
+    '고무풍선과 플라스크 안의 변화를 관찰해 기록해요.'
+  ];
+  steps.forEach((s, i) => {
+    const st = stepStatus(i+1);
+    marker(c, mL + 24, y - 10, i+1, st);
+    c.fillStyle = st === 'todo' ? COL.mute : COL.ink; c.font = `${st === 'now' ? 700 : 400} 30px ${F.serif}`;
+    const lines = wrap(c, s, cw - 70);
+    lines.forEach((ln, k) => c.fillText(ln, mL + 66, y + k*44));
+    y += lines.length*44 + 22;
+  });
+  y += 6;
+
+  c.fillStyle = COL.accentSoft; rr(c, mL, y, cw, 150, 18); c.fill();
+  c.fillStyle = COL.ink; c.font = `700 27px ${F.serif}`; c.fillText('실험하는 동안', mL + 24, y + 44);
+  c.font = `400 26px ${F.serif}`;
+  c.fillText('·  약숟가락에 담는 가루의 양을 비슷하게 해요.', mL + 24, y + 88);
+  c.fillText('·  풍선을 씌울 때 가루가 플라스크 안으로 들어가지 않게 해요.', mL + 24, y + 128);
+  y += 182;
+
+  const done = S.step >= 5;
+  c.font = `700 30px ${F.sans}`; const bt = '관찰 기록지 펼치기 (23쪽) →'; const btw = c.measureText(bt).width + 60;
+  c.fillStyle = done ? COL.accent : '#fff'; rr(c, mL, y, btw, 64, 32); c.fill();
+  c.strokeStyle = done ? COL.accent : COL.ink; c.lineWidth = 2.5; rr(c, mL, y, btw, 64, 32); c.stroke();
+  c.fillStyle = done ? '#fff' : COL.ink; c.fillText(bt, mL + 30, y + 43);
+  P.hits.push({ x:mL, y, w:btw, h:64, on:() => openSheet() });
+
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.serif}`; c.fillText('22', mL, H - 46);
+  P.cnv.tex.needsUpdate = true;
+}
+function drawRight(){
+  const P = pageR, c = P.cnv.ctx, W = 1400, H = 2000; P.hits = [];
+  paperBg(c, W, H, 1);
+  const mL = 190, mR = 110;
+  c.textBaseline = 'alphabetic';
+  c.fillStyle = COL.mute; c.font = `400 26px ${F.sans}`; c.textAlign = 'right'; c.fillText('실험대', W - mR, 92); c.textAlign = 'left';
+  c.strokeStyle = 'rgba(42,40,51,.18)'; c.lineWidth = 2; c.beginPath(); c.moveTo(mL,112); c.lineTo(W-mR,112); c.stroke();
+  c.fillStyle = COL.ink; c.font = `700 28px ${F.sans}`; c.fillText('안전', mL, 168);
+  c.font = `400 27px ${F.serif}`; c.fillText('보안경과 실험용 장갑을 끼고, 유리 기구가 깨지지 않게 조심해요.', mL + 76, 168);
+  const btn = (x, y, label, on, active) => {
+    c.font = `700 28px ${F.sans}`; const tw = c.measureText(label).width + 48;
+    c.fillStyle = active ? COL.ink : '#fff'; rr(c, x, y, tw, 58, 29); c.fill();
+    c.strokeStyle = COL.ink; c.lineWidth = 2.5; rr(c, x, y, tw, 58, 29); c.stroke();
+    c.fillStyle = active ? '#fff' : COL.ink; c.fillText(label, x + 24, y + 39);
+    P.hits.push({ x, y, w:tw, h:58, on }); return x + tw + 16;
+  };
+  let bx = btn(mL, 1866, S.xrayUser ? '풍선 속 보기: 켬' : '풍선 속 보기: 끔', () => { S.xrayUser = !S.xrayUser; drawRight(); }, S.xrayUser);
+  btn(bx, 1866, '↺ 처음부터', () => resetAll(), false);
+  c.fillStyle = COL.mute; c.font = `400 28px ${F.serif}`; c.textAlign = 'right'; c.fillText('23', W - mR, H - 40); c.textAlign = 'left';
+  P.cnv.tex.needsUpdate = true;
+}
+
+/* ================= HUD ================= */
+const STEP_CAM = {
+  1:{ pos:[1.2,2.55,3.3], tgt:[1.2,0.85,0.12] },
+  2:{ pos:[1.2,2.15,3.25], tgt:[1.2,0.72,0.0] },
+  3:{ pos:[1.2,3.0,3.25], tgt:[1.2,0.85,0.32] },
+  4:{ pos:[1.2,2.1,3.7], tgt:[1.2,1.15,-0.1] },
+  5:{ pos:[1.2,2.1,3.7], tgt:[1.2,1.15,-0.1] },
+  all:{ pos:[0.25,4.2,4.0], tgt:[0.15,0.35,0.2] }
+};
+let camKey = 1, tween = null;
+function flyTo(key){
+  camKey = key; const s = STEP_CAM[key];
+  const tgt = V(...s.tgt), pos = V(...s.pos);
+  const asp = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 1.6;
+  pos.sub(tgt).multiplyScalar(Math.max(1, 1.45 / asp)).add(tgt);
+  tween = { t:0, dur: RM ? 0.01 : 1.5, p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:tgt };
+}
+function setCaption(t){ $('#capText').textContent = t; }
+function caption(){
+  if (S.step === 1){
+    const att = STN.filter(s => s.balloon).length;
+    if (att < 2) return `① 바닥에 놓인 풍선을 끌어서 분말 깔때기 아래에 끼워요. (${att}/2)`;
+    return `① 약숟가락을 끌어 깔때기에 가루를 넣어요 — 밀가루 ${STN[0].spoons}/2, 탄산수소 나트륨 ${STN[1].spoons}/2`;
+  }
+  if (S.step === 2) return '② 식초병을 플라스크 위로 끌고 가서 꾹 누르고 있으면 부어져요. 주황색 기준선에서 손을 떼요.';
+  if (S.step === 3) return '③ 풍선을 끌어서 플라스크 입구에 씌워요. 가루가 쏟아지지 않게 풍선은 늘어뜨린 채로!';
+  if (S.step === 4 && S.phase !== 'running') return '④ 두 풍선을 동시에 눌러 세워요. 두 손가락으로 함께 누르거나, 1초 안에 차례로 눌러요.';
+  if (S.phase === 'running') return '두 플라스크를 비교해 봐요. 풍선과 식초에서 무엇이 달라지나요?';
+  return '⑤ 관찰한 것을 기록지에 정리해요. 아래 「기록지」 버튼을 눌러요.';
+}
+function refreshHud(){
+  setCaption(caption());
+  document.querySelectorAll('#steps li').forEach(li => {
+    const k = +li.dataset.k;
+    li.classList.toggle('done', S.step > k || (k === 5 && S.sheetSeen));
+    li.classList.toggle('now', S.step === k && !(k === 5 && S.sheetSeen));
+  });
+  $('#bSheet').classList.toggle('pulse', S.step === 5 && !S.sheetSeen);
+}
+let toastT = 0;
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('show'); toastT = 3.4; }
+$('#bAll').onclick = () => { S.userCam = false; flyTo(camKey === 'all' ? S.step : 'all'); };
+$('#bReset').onclick = () => resetAll();
+$('#bSheet').onclick = () => openSheet();
+let soundOn = true;
+$('#bSound').onclick = () => { soundOn = !soundOn; $('#bSound').classList.toggle('off', !soundOn); $('#bSound').setAttribute('aria-label', soundOn ? '소리 끄기' : '소리 켜기'); };
+
+/* observation cards */
+const CARDS = {
+  flour:{ t:'밀가루를 관찰해요', l:['하얀색 가루예요.', '알갱이가 아주 고와 만지면 보드라워요.', '냄새가 거의 나지 않아요.'] },
+  soda:{ t:'탄산수소 나트륨을 관찰해요', l:['하얀색 가루예요.', '밀가루보다 알갱이가 조금 굵고 뽀득뽀득해요.', '냄새가 나지 않아요.'] },
+  vinegar:{ t:'식초를 관찰해요', l:['연한 노란색 액체예요.', '시큼한 냄새가 나요. 손으로 바람을 일으켜 냄새를 맡아요.', '실험실에서는 맛을 보지 않아요.'] }
+};
+function inspect(k){
+  S.inspected[k] = true; drawLeft();
+  $('#cardT').textContent = CARDS[k].t;
+  $('#cardL').innerHTML = CARDS[k].l.map(x => `<li>${x}</li>`).join('');
+  $('#card').hidden = false;
+}
+$('#cardX').onclick = () => { $('#card').hidden = true; };
+
+/* fizz sound */
+let actx = null, fizzGain = null;
+function initAudio(){
+  if (actx) return;
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * (Math.random() < 0.04 ? 1 : 0.35);
+    const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 4200; bp.Q.value = 0.7;
+    fizzGain = actx.createGain(); fizzGain.gain.value = 0;
+    src.connect(bp).connect(fizzGain).connect(actx.destination); src.start();
+  } catch (e) { actx = null; }
+}
+
+/* ================= camera pad (from the textbook page) ================= */
+const held = { px:0, pz:0, spin:0, z:0, tilt:0 };
+const keyHeld = new Set();
+function takeCamera(){ tween = null; S.userCam = true; }
+function readBtn(btn){
+  if (btn.dataset.pan){ const [x,z] = btn.dataset.pan.split(',').map(Number); return { px:x, pz:z }; }
+  if (btn.dataset.tilt) return { tilt:Number(btn.dataset.tilt) };
+  if (btn.dataset.spin) return { spin:Number(btn.dataset.spin) };
+  return { z:Number(btn.dataset.zoom) };
+}
+document.querySelectorAll('#pad button[data-pan], #pad button[data-tilt], #pad button[data-spin], #pad button[data-zoom]').forEach(btn => {
+  const start = e => { e.preventDefault(); takeCamera(); btn.classList.add('held'); try { btn.setPointerCapture(e.pointerId); } catch (_) {} Object.assign(held, readBtn(btn)); };
+  const end = () => { btn.classList.remove('held'); for (const k of Object.keys(readBtn(btn))) held[k] = 0; };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end); btn.addEventListener('lostpointercapture', end);
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); takeCamera(); const r = readBtn(btn); panCamera((r.px||0)*0.12, (r.pz||0)*0.12); moveCamera((r.spin||0)*0.25, -(r.tilt||0)*0.12, (r.z||0)*0.18); } });
+});
+$('#bHome').onclick = () => { S.userCam = false; flyTo(S.step); };
+const _sph = new THREE.Spherical(), _off = new THREE.Vector3();
+function moveCamera(dTheta, dPhi, dZoom){
+  if (!dTheta && !dPhi && !dZoom) return;
+  _off.copy(camera.position).sub(controls.target); _sph.setFromVector3(_off);
+  _sph.theta -= dTheta;
+  _sph.phi = clamp(_sph.phi - dPhi, 0.12, controls.maxPolarAngle);
+  _sph.radius = clamp(_sph.radius * Math.exp(dZoom), controls.minDistance, controls.maxDistance);
+  _off.setFromSpherical(_sph); camera.position.copy(controls.target).add(_off);
+}
+const _fw = new THREE.Vector3(), _rt = new THREE.Vector3(), _mv = new THREE.Vector3();
+function panCamera(dx, dz){
+  if (!dx && !dz) return;
+  const dist = camera.position.distanceTo(controls.target);
+  camera.getWorldDirection(_fw); _fw.y = 0;
+  if (_fw.lengthSq() < 1e-6) _fw.set(0, 0, -1);
+  _fw.normalize(); _rt.set(-_fw.z, 0, _fw.x);
+  _mv.copy(_rt).multiplyScalar(dx*dist).addScaledVector(_fw, dz*dist);
+  controls.target.add(_mv); camera.position.add(_mv);
+  keepInBounds();
+}
+function keepInBounds(){
+  const t = controls.target;
+  const nx = clamp(t.x, -3, 3.2), nz = clamp(t.z, -2.6, 2.6);
+  if (nx !== t.x || nz !== t.z){ _mv.set(nx - t.x, 0, nz - t.z); t.add(_mv); camera.position.add(_mv); }
+}
+function applyHeld(dt){
+  let px = held.px, pz = held.pz, spin = held.spin, z = held.z, tilt = held.tilt;
+  if (keyHeld.has('ArrowLeft')) px -= 1; if (keyHeld.has('ArrowRight')) px += 1;
+  if (keyHeld.has('ArrowUp')) tilt -= 1; if (keyHeld.has('ArrowDown')) tilt += 1;
+  if (keyHeld.has('q')) spin -= 1; if (keyHeld.has('e')) spin += 1;
+  if (keyHeld.has('+')) z -= 1; if (keyHeld.has('-')) z += 1;
+  panCamera(px*0.6*dt, pz*0.6*dt);
+  moveCamera(spin*1.2*dt, -tilt*0.8*dt, z*1.1*dt);
+}
+function normKey(k){
+  if (k === '=' || k === 'Add') return '+';
+  if (k === '_' || k === 'Subtract') return '-';
+  if (k === 'Q' || k === 'ㅂ') return 'q';
+  if (k === 'E' || k === 'ㄷ') return 'e';
+  return k;
+}
+addEventListener('keydown', e => {
+  if (!$('#sheet').hidden) { if (e.key === 'Escape') closeSheet(); return; }
+  if (e.target.closest && e.target.closest('button,textarea')) return;
+  const k = normKey(e.key);
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','q','e'].includes(k)){ e.preventDefault(); if (!keyHeld.has(k)) takeCamera(); keyHeld.add(k); }
+  else if (k === '0' || k === 'Home'){ S.userCam = false; flyTo(S.step); }
+});
+addEventListener('keyup', e => keyHeld.delete(normKey(e.key)));
+addEventListener('blur', () => { keyHeld.clear(); held.px = held.pz = held.spin = held.z = held.tilt = 0; });
+
+/* ================= picking + dragging ================= */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
+function setRay(e){
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left)/r.width)*2 - 1, -((e.clientY - r.top)/r.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+}
+function planePoint(e, h){
+  setRay(e); plane.constant = -h;
+  if (!ray.ray.intersectPlane(plane, _hit)) return null;
+  _hit.x = clamp(_hit.x, -0.3, 2.5); _hit.z = clamp(_hit.z, -1.3, 1.6);
+  return _hit.clone();
+}
+function candidates(){
+  const list = [];
+  if (S.step === 1){ balloons.forEach(b => { if (b.state === 'lying') list.push({ obj:b.proxy, type:'balloon', ref:b }); });
+    spoons.forEach(s => { if (s.state === 'home' || s.state === 'return') list.push({ obj:s.prox, type:'spoon', ref:s }); });
+    STN.forEach((st, i) => list.push({ obj:st.dish.proxy, type:'dish', ref:st })); }
+  if (S.step === 2){ if (bottle.state === 'home' || bottle.state === 'return') list.push({ obj:bottle.prox, type:'bottle', ref:bottle }); }
+  if (S.step === 3){ balloons.forEach(b => { if (b.state === 'lying2') list.push({ obj:b.proxy, type:'balloon', ref:b }); }); }
+  if (S.step === 4 && S.phase === 'setup'){ balloons.forEach(b => list.push({ obj:b.proxy, type:'raise', ref:b })); flasks.forEach(f => list.push({ obj:f.proxy, type:'raise', ref:f.balloon })); }
+  list.push({ obj:pageL.mesh, type:'page', ref:pageL }, { obj:pageR.mesh, type:'page', ref:pageR });
+  return list;
+}
+function pickAt(e){
+  setRay(e);
+  const cands = candidates();
+  const hits = ray.intersectObjects(cands.map(c => c.obj), false);
+  if (!hits.length) return null;
+  const PRI = { spoon:0, balloon:0, bottle:0, raise:0, dish:1, page:2 };
+  let h = hits[0], c = cands.find(c => c.obj === h.object);
+  for (const hh of hits){ const cc = cands.find(c => c.obj === hh.object); if (PRI[cc.type] < PRI[c.type]){ h = hh; c = cc; } }
+  if (c.type === 'page'){
+    const cx = h.uv.x * 1400, cy = (1 - h.uv.y) * 2000;
+    const r = c.ref.hits.find(r => cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h);
+    return r ? { type:'pagehit', act:r.on } : null;
+  }
+  return c;
+}
+
+const activePtrs = new Set();
+let down = null, drag = null;
+canvas.addEventListener('pointerdown', e => {
+  activePtrs.add(e.pointerId);
+  initAudio(); if (actx && actx.state === 'suspended') actx.resume();
+  const isPrimary = e.pointerType !== 'mouse' || e.button === 0;
+  const hit = isPrimary ? pickAt(e) : null;
+  if (hit && hit.type === 'raise'){ pressBalloon(hit.ref, e.pointerId); down = { x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, t:performance.now(), moved:true, drag:false }; return; }
+  if (hit && (hit.type === 'balloon' || hit.type === 'spoon' || hit.type === 'bottle') && !drag){
+    drag = { ...hit, id:e.pointerId, x:e.clientX, y:e.clientY, moved:false };
+    startDrag(drag, e);
+    down = { x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, t:performance.now(), moved:false, drag:false, tapHit:hit };
+    return;
+  }
+  down = { x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, t:performance.now(), moved:activePtrs.size > 1, drag:isPrimary && activePtrs.size === 1, tapHit:hit };
+});
+canvas.addEventListener('pointermove', e => {
+  if (drag && e.pointerId === drag.id){
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) drag.moved = true;
+    moveDrag(drag, e); return;
+  }
+  if (down){
+    if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 7 && !down.moved){ down.moved = true; tween = null; S.userCam = true; }
+    if (down.moved && down.drag && activePtrs.size === 1){
+      const h = innerHeight || 800, ddx = e.clientX - down.lx, ddy = e.clientY - down.ly;
+      panCamera(-ddx / h * 1.1, 0); moveCamera(0, ddy * 2.2 / h, 0);
+    }
+    down.lx = e.clientX; down.ly = e.clientY;
+  } else if (e.pointerType === 'mouse'){
+    const h = pickAt(e); canvas.style.cursor = h ? (h.type === 'pagehit' || h.type === 'dish' || h.type === 'raise' ? 'pointer' : 'grab') : 'default';
+  }
+});
+function endPointer(e, cancelled){
+  activePtrs.delete(e.pointerId);
+  releaseBalloonPress(e.pointerId);
+  if (drag && e.pointerId === drag.id){ endDrag(drag, e, cancelled); drag = null; down = null; return; }
+  if (!cancelled && down && !down.moved && performance.now() - down.t < 600 && down.tapHit){
+    const h = down.tapHit;
+    if (h.type === 'pagehit') h.act();
+    else if (h.type === 'dish') inspect(h.ref.kind);
+  }
+  if (activePtrs.size === 0) down = null; else if (down) down.drag = false;
+}
+canvas.addEventListener('pointerup', e => endPointer(e, false));
+canvas.addEventListener('pointercancel', e => endPointer(e, true));
+
+const DRAG_H = { balloon1: STEM_B + 0.09, spoon: STEM_B + 0.62, bottle: BOARD_TOP + MOUTH_Y + 0.12, balloon3: BOARD_TOP + 1.95 };
+function startDrag(d, e){
+  if (d.type === 'balloon'){
+    const b = d.ref; b.tw = null;
+    if (S.step === 1){ applyPose(b, 'funnel'); b.state = 'drag1'; }
+    else { applyPose(b, 'held', b.g.rotation.y); b.state = 'drag3'; }
+    b.follow = b.g.position.clone();
+    moveDrag(d, e, true);
+  } else if (d.type === 'spoon'){
+    const s = d.ref;
+    if (!s.st.balloon){ toast(`먼저 ${s.st.name} 깔때기 아래에 풍선을 끼워요.`); drag = null; d.cancel = true; return; }
+    if (s.st.spoons >= 2){ toast('두 숟가락이면 충분해요. 다른 가루도 넣어 봐요.'); drag = null; d.cancel = true; return; }
+    s.state = 'drag'; s.loaded = true; s.heap.visible = true; s.st.dish.mound.scale.y = 1 - (s.st.spoons + 1)*0.22;
+    moveDrag(d, e, true);
+  } else if (d.type === 'bottle'){
+    bottle.state = 'drag'; bottle.held = true; moveDrag(d, e, true);
+    if (!S.inspected.vinegar) { S.inspected.vinegar = true; drawLeft(); }
+  }
+}
+function moveDrag(d, e){
+  if (d.cancel) return;
+  if (d.type === 'balloon'){
+    const b = d.ref, h = S.step === 1 ? DRAG_H.balloon1 : DRAG_H.balloon3;
+    const p = planePoint(e, h); if (!p) return;
+    b.follow.copy(p);
+    // snap preview
+    const tgt = S.step === 1 ? nearestFunnel(p) : nearestFlask(p);
+    if (tgt){ snapRing.visible = true; snapRing.position.copy(S.step === 1 ? V(tgt.funPos.x, STEM_B + 0.05, tgt.funPos.z) : tgt.mouth); }
+    else snapRing.visible = false;
+  } else if (d.type === 'spoon'){
+    const p = planePoint(e, DRAG_H.spoon); if (!p) return; d.ref.target.copy(p);
+    const near = STN.find(st => hdist(p, st.funPos) < 0.34);
+    snapRing.visible = !!near; if (near) snapRing.position.set(near.funPos.x, STEM_B + 0.51, near.funPos.z);
+  } else if (d.type === 'bottle'){
+    const p = planePoint(e, DRAG_H.bottle); if (!p) return; bottle.target.copy(p);
+    const f = flasks.find(f => hdist(p, f.mouth) < 0.42 && !f.ok);
+    bottle.pourFlask = f || null;
+  }
+}
+function nearestFunnel(p){ return STN.find(st => !st.balloon && hdist(p, st.funPos) < 0.32) || null; }
+function nearestFlask(p){ return flasks.find(f => !f.balloon && hdist(p, f.mouth) < 0.32) || null; }
+function endDrag(d, e, cancelled){
+  snapRing.visible = false;
+  if (d.cancel) return;
+  if (d.type === 'balloon'){
+    const b = d.ref;
+    if (S.step === 1){
+      let st = nearestFunnel(b.follow);
+      if (!d.moved) st = STN.find(s => !s.balloon && s === STN[b.i]) || STN.find(s => !s.balloon);
+      b.follow = null;
+      if (st && !cancelled){
+        st.balloon = b; b.station = st; b.state = 'onFunnel';
+        b.pts.material.color.set(st.powderCol);
+        tweenPose(b, 'funnel', V(st.funPos.x, STEM_B + 0.09, st.funPos.z), 0.35);
+        toast(`풍선을 ${st.name} 깔때기에 끼웠어요.`);
+      } else { b.state = 'lying'; tweenPose(b, 'lying', LYING1[b.i], 0.45, YAW1[b.i]); if (!cancelled) toast('풍선을 분말 깔때기 아래쪽(주황색 고리)까지 끌어다 놓아요.'); }
+      refreshHud();
+    } else {
+      const f = nearestFlask(b.follow); b.follow = null;
+      if (f && !cancelled && d.moved){
+        fitBalloon(b, f);
+      } else {
+        b.state = 'lying2'; tweenPose(b, 'lying', LYING2[b.i], 0.45, YAW2[b.i]);
+        if (!cancelled) toast(d.moved ? '풍선 입구를 플라스크 입구(주황색 고리) 위에 놓아요.' : '풍선을 누른 채로 플라스크 입구까지 끌어 가요.');
+      }
+    }
+  } else if (d.type === 'spoon'){
+    const s = d.ref, p = s.target;
+    const near = STN.find(st => hdist(p, st.funPos) < 0.34);
+    if (!d.moved){ s.state = 'return'; s.loaded = false; s.heap.visible = false; s.st.dish.mound.scale.y = 1 - s.st.spoons*0.22; toast('약숟가락을 누른 채로 깔때기 위까지 끌어 가요.'); return; }
+    if (near === s.st && !cancelled){ s.state = 'pour'; s.t = 0; }
+    else {
+      s.state = 'return'; s.loaded = false; s.heap.visible = false; s.st.dish.mound.scale.y = 1 - s.st.spoons*0.22;
+      if (near && near !== s.st) toast(`이 약숟가락은 ${s.st.name}용이에요. 가루가 섞이지 않게 ${s.st.name} 깔때기에 넣어요.`);
+      else if (!cancelled) toast('깔때기 위(주황색 고리)에서 손을 떼면 가루가 들어가요.');
+    }
+  } else if (d.type === 'bottle'){
+    bottle.held = false;
+    const f = bottle.pourFlask; bottle.pourFlask = null; bottle.state = 'return';
+    if (!d.moved){ inspect('vinegar'); toast('식초병을 누른 채로 플라스크 위까지 끌어 가요.'); return; }
+    if (f) judgeLevel(f);
+  }
+}
+function judgeLevel(f){
+  if (Math.abs(f.level - LINE) <= TOL){ f.ok = true; f.anim = { from:f.level, to:LINE, t:0 }; toast('기준선에 딱 맞췄어요!'); }
+  else if (f.level > LINE + TOL){ f.anim = { from:f.level, to:LINE, t:0, ok:true }; toast('기준선을 넘었어요. 스포이트로 조금 덜어 냈어요. 다음엔 기준선 가까이에서 천천히 부어요.'); }
+  else if (f.level > 0.01) toast('조금 더 부어요. 주황색 기준선까지!');
+}
+function fitBalloon(b, f){
+  f.balloon = b; b.flask = f; b.state = 'fitted'; f.kind = b.station.kind;
+  tweenPose(b, 'fitted', V(f.mouth.x, BOARD_TOP + BAL_Y, FLASK_Z), 0.5, f.idx === 0 ? 0 : Math.PI);
+  const st = { kind:f.kind, bal:b, flask:f };
+  if (f.kind === 'flour'){ flourSt = st; f.g.add(sediment); }
+  else { sodaSt = st; f.g.add(bubbles, foamCol, foamBits, ribbon, glow); }
+  toast(`${b.station.name} 풍선을 씌웠어요.`);
+}
+
+/* simultaneous press to raise */
+const presses = new Map();
+let lastPress = null;
+function pressBalloon(b, pid){
+  if (!b) return;
+  const now = performance.now();
+  presses.set(pid, b); b.press = 1;
+  const other = balloons.find(x => x !== b);
+  const together = [...presses.values()].includes(other) || (lastPress && lastPress.b === other && now - lastPress.t < 1200);
+  if (together){ presses.clear(); lastPress = null; raise(); return; }
+  lastPress = { b, t:now };
+  toast('다른 풍선도 함께 눌러요! (1초 안에)');
+}
+function releaseBalloonPress(pid){ const b = presses.get(pid); if (b){ presses.delete(pid); } }
+
+/* ================= step logic ================= */
+function goStep(n){
+  S.step = n; drawLeft(); drawRight(); refreshHud();
+  if (!S.userCam || n === 2 || n === 4) { S.userCam = false; flyTo(n); }
+}
+function raise(){
+  if (S.step !== 4 || S.phase !== 'setup') return;
+  S.phase = 'running'; S.tR = 0; S.userCam = false;
+  balloons.forEach(b => b.press = 0);
+  refreshHud(); flyTo(4);
+}
+function resetAll(){
+  Object.assign(S, { step:1, phase:'setup', tR:0, tau:-1, gas:0, inflate:0, emit:0, foam:0, cloud:0, flop:0, spawnAcc:0, doneT:0, userCam:false, xrayUser:false, cues:{}, sheetSeen:false, transT:-1 });
+  S.inspected = { flour:false, soda:false, vinegar:false };
+  flourSt = sodaSt = null;
+  STN.forEach(st => { st.spoons = 0; st.balloon = null; st.grainsIn = 0; st.dish.mound.scale.y = 1; });
+  spoons.forEach(s => { s.state = 'home'; s.loaded = false; s.heap.visible = false; s.g.position.copy(s.home); s.g.rotation.set(0, s.homeRotY, 0); s.target.copy(s.home); });
+  G.forEach(g => g.on = false);
+  balloons.forEach((b, i) => { b.state = 'lying'; b.station = null; b.flask = null; b.visibleN = 0; b.tw = null; b.follow = null; b.press = 0; b.hits = 0; b.settled = 0;
+    b.i = i; b.g.position.copy(LYING1[i]); applyPose(b, 'lying', YAW1[i]); b.P.forEach(p => { p.ph = 0; p.vy = 0; p.life = 0; p.done = false; }); });
+  flasks.forEach(f => { f.ok = false; f.anim = null; f.balloon = null; f.kind = null; setLevel(f, 0); f.liqMat.uniforms.uCloud.value = 0; });
+  [sediment, bubbles, foamCol, foamBits, ribbon, glow].forEach(o => o.parent && o.parent.remove(o));
+  sediment.visible = false; sediment.scale.y = 0.001; B.forEach(b => b.on = false);
+  bottle.state = 'home'; bottle.g.position.copy(bottle.home); bottle.g.rotation.set(0,0,0); bottle.g.scale.setScalar(1); bottle.g.visible = true; bottle.stream.visible = false;
+  g1.userData.pop.k = 0; g2.userData.pop.k = 0; g2.scale.y = 0.001; g2.visible = false; popTo(g1, 1); popTo(g2, 0);
+  $('#card').hidden = true; resetSheet();
+  drawLeft(); drawRight(); refreshHud(); flyTo(1);
+}
+
+/* ================= simulation ================= */
+const dummy = new THREE.Object3D(), _t = new THREE.Vector3(), _w = new THREE.Vector3(), _fo = new THREE.Vector3();
+function tickBalloon(b, dt){
+  if (b.tw){
+    b.tw.t += dt; const k = easeIO(clamp(b.tw.t / b.tw.dur, 0, 1));
+    b.g.position.lerpVectors(b.tw.p0, b.tw.p1, k); b.g.quaternion.slerpQuaternions(b.tw.q0, b.tw.q1, k);
+    b.U.uBend.value = lerp(b.tw.u0.bend, b.tw.u1.bend, k); b.U.uLen.value = lerp(b.tw.u0.len, b.tw.u1.len, k);
+    b.U.uRad.value = lerp(b.tw.u0.rad, b.tw.u1.rad, k); b.U.uFlat.value = lerp(b.tw.u0.flat, b.tw.u1.flat, k);
+    if (b.tw.t >= b.tw.dur) b.tw = null;
+  }
+  if (b.follow) b.g.position.lerp(b.follow, Math.min(1, dt*14));
+  if (S.phase === 'setup' && !b.tw && b.pose !== 'fitted'){
+    // powder makes the balloon tip a little heavier
+    const base = POSES[b.pose].rad; b.U.uRad.value = base + 0.08 * (b.visibleN / b.N);
+  }
+  b.g.updateMatrixWorld();
+  balloonWorld(b, 0.55, b.proxy.position);
+  // press glow in step 4
+  b.press = Math.max(0, b.press - dt*1.5);
+  b.mat.userData.u.uGlow.value.setRGB(0.25*b.press, 0.18*b.press, 0.05*b.press);
+}
+function updatePowder(b, dt, release){
+  const fl = b.flask, kind = b.station ? b.station.kind : 'flour';
+  if (fl) fl.g.getWorldPosition(_fo);
+  for (let i=0;i<b.N;i++){
+    const p = b.P[i];
+    if (p.ph === 0){
+      if (i >= b.visibleN){ p.x = 0; p.y = -50; p.z = 0; }
+      else { const r = profileR(p.t)*0.5*p.r; bendPoint(b.U, Math.cos(p.a)*r, p.t, Math.sin(p.a)*r, _t).applyMatrix4(b.g.matrixWorld); p.x = _t.x; p.y = _t.y; p.z = _t.z; }
+      if (release !== null && release > p.delay && fl){ if (i < b.visibleN) { p.ph = 1; p.vy = 0; } else p.ph = 3; }
+    } else if (p.ph === 1){
+      p.vy = Math.max(p.vy - 3.2*dt, -1.7); p.y += p.vy*dt;
+      const ly = p.y - _fo.y, lx = p.x - _fo.x, lz = p.z - _fo.z;
+      const rm = rIn(ly) - 0.016, r0 = Math.hypot(lx, lz);
+      if (r0 > rm){ const k = rm/r0; p.x = _fo.x + lx*k; p.z = _fo.z + lz*k; }
+      if (ly < LINE){
+        p.ph = 2; b.hits++; p.life = 0;
+        const a = Math.random()*6.283, d = Math.sqrt(Math.random())*0.27;
+        p.fx = _fo.x + Math.cos(a)*d; p.fz = _fo.z + Math.sin(a)*d; p.fy = _fo.y + 0.016 + Math.random()*0.026;
+        if (kind === 'soda' && S.tau < 0) S.tau = 0;
+      }
+    } else if (p.ph === 2){
+      p.life += dt;
+      if (kind === 'flour'){
+        p.y = lerp(p.y, p.fy, Math.min(1, dt*0.9)); p.x = lerp(p.x, p.fx, Math.min(1, dt*0.6)); p.z = lerp(p.z, p.fz, Math.min(1, dt*0.6));
+        if (p.life > 2.6 && !p.done){ p.done = true; b.settled++; }
+      } else {
+        p.y = lerp(p.y, _fo.y + 0.03, Math.min(1, dt*2)); p.x = lerp(p.x, p.fx, Math.min(1, dt*1.3)); p.z = lerp(p.z, p.fz, Math.min(1, dt*1.3));
+        if (p.life > 1.1 + p.delay*2.5){ p.ph = 3; }
+      }
+    }
+    if (p.ph === 3){ p.y = -50; }
+    b.pos[i*3] = p.x; b.pos[i*3+1] = p.y; b.pos[i*3+2] = p.z;
+  }
+  b.geo.attributes.position.needsUpdate = true;
+}
+function tickSpoon(s, dt){
+  if (s.state === 'drag'){ s.g.position.lerp(s.target, Math.min(1, dt*16)); s.g.rotation.x = lerp(s.g.rotation.x, 0, Math.min(1, dt*8)); }
+  else if (s.state === 'pour'){
+    s.t += dt;
+    const over = V(s.st.funPos.x - 0.02, STEM_B + 0.62, s.st.funPos.z);
+    s.g.position.lerp(over, Math.min(1, dt*10));
+    s.g.rotation.x = lerp(0, 2.1, easeOut(clamp((s.t - 0.15)/0.45, 0, 1)));
+    if (s.t > 0.3 && s.loaded){
+      s.loaded = false; s.heap.visible = false;
+      for (let k=0;k<GRAINS_PER_SPOON;k++){ const g = G.find(g => !g.on); if (!g) break;
+        Object.assign(g, { on:true, x:over.x + (Math.random()-0.5)*0.06, y:over.y - 0.02 - Math.random()*0.03, z:over.z + (Math.random()-0.5)*0.06, vy:-Math.random()*0.4 - k*0.012, st:s.st }); }
+    }
+    if (s.t > 1.0){ s.st.spoons++; s.state = 'return'; refreshHud(); }
+  } else if (s.state === 'return'){
+    s.g.position.lerp(s.home, Math.min(1, dt*7)); s.g.rotation.x = lerp(s.g.rotation.x, 0, Math.min(1, dt*8));
+    if (s.g.position.distanceTo(s.home) < 0.005){ s.g.position.copy(s.home); s.state = 'home'; }
+  }
+}
+function tickGrains(dt){
+  for (let i=0;i<NG;i++){
+    const g = G[i];
+    if (g.on){
+      g.vy -= 3.0*dt; g.y += g.vy*dt;
+      const f = g.st.funPos, ly = g.y - f.y;
+      if (ly < 0.52){ const rm = rFun(Math.max(ly, 0)) - 0.01, lx = g.x - f.x, lz = g.z - f.z, r0 = Math.hypot(lx, lz); if (r0 > rm){ const k = rm/r0; g.x = f.x + lx*k; g.z = f.z + lz*k; } }
+      if (ly < -0.18){
+        g.on = false; g.st.grainsIn++;
+        const b = g.st.balloon; if (b) b.visibleN = Math.min(b.N, Math.round(b.N * g.st.grainsIn / (2*GRAINS_PER_SPOON)));
+      }
+    }
+    gPos[i*3] = g.on ? g.x : 0; gPos[i*3+1] = g.on ? g.y : -50; gPos[i*3+2] = g.on ? g.z : 0;
+  }
+  gGeo.attributes.position.needsUpdate = true;
+}
+const _q = new THREE.Quaternion();
+function tickBottle(dt, time){
+  const f = bottle.pourFlask;
+  if (bottle.state === 'drag' && f && bottle.held){
+    const th = 2.0, mt = V(f.mouth.x, f.mouth.y + 0.1, f.mouth.z);
+    const tp = V(mt.x + 0.66*Math.sin(th), mt.y - 0.66*Math.cos(th), mt.z);
+    bottle.g.position.lerp(tp, Math.min(1, dt*10));
+    bottle.tilt = lerp(bottle.tilt, th, Math.min(1, dt*8));
+    if (bottle.tilt > 1.75){
+      const near = f.level > LINE - 0.045;
+      const rate = near ? 0.03 : 0.075;
+      setLevel(f, Math.min(LINE + 0.07, f.level + rate*dt));
+      bottle.stream.visible = true; bottle.stream.position.copy(mt);
+      bottle.stream.scale.set(1, Math.max(0.01, mt.y - (BOARD_TOP + f.level)), 1);
+    } else bottle.stream.visible = false;
+  } else {
+    bottle.stream.visible = false;
+    if (bottle.state === 'drag') bottle.g.position.lerp(bottle.target, Math.min(1, dt*14));
+    else if (bottle.state === 'return'){ bottle.g.position.lerp(bottle.home, Math.min(1, dt*6)); if (bottle.g.position.distanceTo(bottle.home) < 0.005){ bottle.g.position.copy(bottle.home); bottle.state = 'home'; } }
+    bottle.tilt = lerp(bottle.tilt, 0, Math.min(1, dt*8));
+  }
+  bottle.g.rotation.set(0, 0, bottle.tilt);
+  for (const fl of flasks){
+    if (fl.anim){ fl.anim.t += dt; const k = easeOut(clamp(fl.anim.t/0.6, 0, 1)); setLevel(fl, lerp(fl.anim.from, fl.anim.to, k)); if (k >= 1){ if (fl.anim.ok) fl.ok = true; fl.anim = null; } }
+  }
+}
+function setBal(b, bend, len, rad, flat){ b.U.uBend.value = bend; b.U.uLen.value = len; b.U.uRad.value = rad; b.U.uFlat.value = flat; }
+
+function simulate(dt, time){
+  // stage pop-ups
+  for (const g of [g1, g2]){
+    const P = g.userData.pop;
+    P.k = clamp(P.k + (P.to > P.k ? dt/1.0 : -dt/0.55), 0, 1);
+    const s = P.to > 0 ? easeBack(P.k) : easeIO(P.k);
+    g.scale.y = Math.max(0.001, s); if (P.k <= 0 && P.to === 0) g.visible = false;
+  }
+  balloons.forEach(b => tickBalloon(b, dt));
+  spoons.forEach(s => tickSpoon(s, dt));
+  tickGrains(dt);
+  if (S.step === 2 || bottle.state !== 'home') tickBottle(dt, time);
+
+  // step transitions
+  if (S.step === 1 && STN.every(st => st.spoons >= 2 && st.grainsIn >= 2*GRAINS_PER_SPOON) && spoons.every(s => s.state === 'home')){
+    if (S.transT < 0){ S.transT = 0; toast('두 풍선에 가루를 모두 넣었어요!'); }
+    S.transT += dt;
+    if (S.transT > 1.0){
+      S.transT = -1;
+      balloons.forEach(b => { const k = b.station === STN[0] ? 0 : 1; b.i = k; b.state = 'lying2'; tweenPose(b, 'lying', LYING2[k], 0.9, YAW2[k]); });
+      popTo(g1, 0); popTo(g2, 1); goStep(2);
+    }
+  }
+  if (S.step === 2 && flasks.every(f => f.ok) && bottle.state === 'home'){
+    if (S.transT < 0) S.transT = 0;
+    S.transT += dt;
+    bottle.g.scale.setScalar(Math.max(0.001, 1 - S.transT/0.5));
+    if (S.transT > 0.6){ S.transT = -1; bottle.g.visible = false; goStep(3); }
+  }
+  if (S.step === 3 && flasks.every(f => f.balloon) && balloons.every(b => !b.tw)) goStep(4);
+
+  // reaction
+  if (S.phase === 'running' || S.phase === 'done'){
+    S.tR += dt;
+    const L = easeIO(clamp(S.tR/1.3, 0, 1));
+    const fl = S.tR > 2.4 ? easeOut(clamp((S.tR - 2.4)/1.6, 0, 1)) : 0; S.flop = fl;
+    const bF = flourSt.bal, bS = sodaSt.bal;
+    setBal(bF, lerp(LIMP.bend, 0, L) + lerp(0, 9.0, fl), lerp(LIMP.len, 0.86, L), lerp(LIMP.rad, 0.66, L) + 0.04, lerp(lerp(LIMP.flat, 0.6, L), 0.36, fl));
+    if (S.tau >= 0){
+      S.tau += dt;
+      S.emit = smooth(0, 0.6, S.tau) * Math.exp(-Math.max(S.tau - 2.8, 0)/3.6);
+      S.gas += S.emit*dt; S.inflate = 1 - Math.exp(-S.gas/2.6);
+    }
+    const inf = S.inflate;
+    setBal(bS, lerp(LIMP.bend, 0, L) + Math.sin(time*7)*0.05*S.emit,
+      lerp(lerp(LIMP.len, 0.86, L), 1.12, inf), lerp(lerp(LIMP.rad, 0.66, L), 1.72, inf),
+      lerp(lerp(LIMP.flat, 0.6, L), 1.0, smooth(0, 0.35, inf)));
+    const release = S.tR > 0.75 ? S.tR - 0.75 : null;
+    balloons.forEach(b => { b.g.updateMatrixWorld(); updatePowder(b, dt, release); });
+    S.cloud = lerp(S.cloud, smooth(0, 1, bF.hits/Math.max(1, bF.visibleN))*0.58, Math.min(1, dt*0.8));
+    flourSt.flask.liqMat.uniforms.uCloud.value = S.cloud;
+    if (bF.settled > 0){ sediment.visible = true; sediment.scale.y = Math.max(0.001, bF.settled/Math.max(1, bF.visibleN)); }
+    const ft = S.tau >= 0 ? smooth(0, 1.2, S.tau) * (0.3 + 0.7*S.emit) : 0;
+    S.foam = lerp(S.foam, ft, Math.min(1, dt*1.8));
+    if (S.tau > 10.5 && S.phase === 'running'){ S.phase = 'done'; goStep(5); toast('실험 끝! 기록지에 관찰한 것을 정리해요.'); }
+  } else {
+    balloons.forEach(b => updatePowder(b, dt, null));
+  }
+
+  // bubbles
+  S.spawnAcc += 120*S.emit*dt;
+  while (S.spawnAcc >= 1){
+    S.spawnAcc -= 1;
+    const b = B.find(b => !b.on); if (!b) break;
+    const a = Math.random()*6.283, d = Math.sqrt(Math.random())*rIn(0.03)*0.85;
+    Object.assign(b, { on:true, x:Math.cos(a)*d, z:Math.sin(a)*d, y:0.02 + Math.random()*0.06, s:0.008 + Math.random()*0.015, v:0.16 + Math.random()*0.22 });
+  }
+  const topY = LINE + S.foam*FOAM_MAX*0.7;
+  for (let i=0;i<NB;i++){
+    const b = B[i];
+    if (b.on){
+      b.v += 0.2*dt; b.y += b.v*dt; b.x += Math.sin(b.ph + b.y*22)*0.0015;
+      const rm = rIn(b.y) - b.s - 0.01, r0 = Math.hypot(b.x, b.z); if (r0 > rm){ b.x *= rm/r0; b.z *= rm/r0; }
+      if (b.y > topY) b.on = false;
+    }
+    dummy.position.set(b.x, b.y, b.z); dummy.scale.setScalar(b.on ? b.s : 0); dummy.updateMatrix(); bubbles.setMatrixAt(i, dummy.matrix);
+  }
+  bubbles.instanceMatrix.needsUpdate = true;
+  const H = S.foam*FOAM_MAX;
+  foamCol.visible = foamBits.visible = H > 0.004;
+  if (foamCol.visible){
+    foamCol.scale.y = H/FOAM_MAX; const k = smooth(0, 0.12, S.foam);
+    for (let i=0;i<NF;i++){
+      const f = FB[i], y = LINE + H*f.layer, r = Math.max(0, rIn(y) - 0.04)*f.rf;
+      dummy.position.set(Math.cos(f.a)*r, y + Math.sin(time*6 + f.ph)*0.004, Math.sin(f.a)*r);
+      dummy.scale.setScalar((0.026 + 0.034*f.sz)*k); dummy.updateMatrix(); foamBits.setMatrixAt(i, dummy.matrix);
+    }
+    foamBits.instanceMatrix.needsUpdate = true;
+  }
+  const op = smooth(0.04, 0.3, S.emit);
+  ribbon.visible = op > 0.01; ribbon.material.uniforms.uOp.value = op; ribbon.material.uniforms.uTime.value = time;
+  glow.intensity = 0.34*S.emit + 0.04*S.inflate;
+  if (fizzGain && actx){ fizzGain.gain.setTargetAtTime(soundOn ? S.emit*0.07*(0.6 + 0.4*Math.random()) : 0, actx.currentTime, 0.05); }
+
+  // x-ray balloons
+  S.xrayK = lerp(S.xrayK, S.xrayUser ? 1 : 0, Math.min(1, dt*5));
+  for (const b of balloons){ b.mat.opacity = lerp(1, 0.3, S.xrayK); b.mat.depthWrite = S.xrayK < 0.05; b.hull.visible = S.xrayK < 0.5; }
+  snapRing.material.opacity = 0.6 + 0.35*Math.sin(time*8);
+}
+
+/* ================= scene labels ================= */
+const labelsEl = $('#labels');
+function mkTag(text, cls){ const el = document.createElement('div'); el.className = 'tag' + (cls ? ' ' + cls : ''); el.textContent = text; labelsEl.appendChild(el); return el; }
+const _lp = new THREE.Vector3();
+const TAGS = [
+  { el:mkTag('밀가루'), at:o => o.copy(STN[0].dish.pos).add(V(0, 0.12, 0.05)), show:() => S.step === 1 },
+  { el:mkTag('탄산수소 나트륨'), at:o => o.copy(STN[1].dish.pos).add(V(0, 0.12, 0.05)), show:() => S.step === 1 },
+  { el:mkTag('분말 깔때기'), at:o => o.copy(STN[0].funPos).add(V(-0.25, 0.5, 0)), show:() => S.step === 1 && !STN[0].balloon },
+  { el:mkTag('밀가루 0/2'), at:o => o.copy(STN[0].funPos).add(V(0, 0.6, 0)), show:() => S.step === 1 && !!STN[0].balloon, text:() => `밀가루 ${STN[0].spoons}/2` },
+  { el:mkTag('탄산수소 나트륨 0/2'), at:o => o.copy(STN[1].funPos).add(V(0, 0.6, 0)), show:() => S.step === 1 && !!STN[1].balloon, text:() => `탄산수소 나트륨 ${STN[1].spoons}/2` },
+  { el:mkTag('식초'), at:o => bottle.g.localToWorld(o.set(0, 0.75, 0)), show:() => S.step === 2 && bottle.g.visible },
+  { el:mkTag('', 'orange'), at:o => flasks[0].g.localToWorld(o.set(-0.25, LINE + 0.05, 0.25)), show:() => S.step === 2 && (bottle.pourFlask === flasks[0] || flasks[0].ok), text:() => flasks[0].ok ? '기준선 ✓' : '기준선까지!' },
+  { el:mkTag('', 'orange'), at:o => flasks[1].g.localToWorld(o.set(0.25, LINE + 0.05, 0.25)), show:() => S.step === 2 && (bottle.pourFlask === flasks[1] || flasks[1].ok), text:() => flasks[1].ok ? '기준선 ✓' : '기준선까지!' },
+  { el:mkTag('밀가루 풍선'), at:o => balloonWorld(balloons.find(b => b.station === STN[0]) || balloons[0], 0.6, o).add(V(0, 0.12, 0)), show:() => S.step === 3 && balloons.some(b => b.station === STN[0] && b.state !== 'fitted') },
+  { el:mkTag('탄산수소 나트륨 풍선'), at:o => balloonWorld(balloons.find(b => b.station === STN[1]) || balloons[1], 0.6, o).add(V(0, 0.12, 0)), show:() => S.step === 3 && balloons.some(b => b.station === STN[1] && b.state !== 'fitted') },
+  { el:mkTag('밀가루'), at:o => balloonWorld(flourSt.bal, 0.95, o), show:() => S.step === 4 && S.phase === 'setup' && !!flourSt },
+  { el:mkTag('탄산수소 나트륨'), at:o => balloonWorld(sodaSt.bal, 0.95, o), show:() => S.step === 4 && S.phase === 'setup' && !!sodaSt },
+  { el:mkTag('이산화 탄소 기체', 'blue'), at:o => sodaSt.flask.g.localToWorld(o.set(0.02, 0.82, 0)), show:() => !!sodaSt && S.emit > 0.18 },
+  { el:mkTag('거품이 부글부글'), at:o => sodaSt.flask.g.localToWorld(o.set(0.3, LINE + S.foam*FOAM_MAX + 0.02, 0.18)), show:() => !!sodaSt && S.foam > 0.25 },
+  { el:mkTag('뿌옇게 흐려져요'), at:o => flourSt.flask.g.localToWorld(o.set(0, 0.18, 0.3)), show:() => !!flourSt && S.cloud > 0.3 },
+  { el:mkTag('다시 축 처져요'), at:o => balloonWorld(flourSt.bal, 0.7, o), show:() => !!flourSt && S.flop > 0.6 },
+  { el:mkTag('풍선이 부풀어요'), at:o => balloonWorld(sodaSt.bal, 0.97, o), show:() => !!sodaSt && S.inflate > 0.45 }
+];
+function updateTags(){
+  const w = innerWidth, h = innerHeight;
+  for (const t of TAGS){
+    let vis = false; try { vis = t.show(); } catch (_) { vis = false; }
+    t.el.classList.toggle('show', vis);
+    if (!vis) continue;
+    if (t.text){ const s = t.text(); if (t.el.textContent !== s) t.el.textContent = s; }
+    t.at(_lp); _lp.project(camera);
+    if (_lp.z > 1){ t.el.classList.remove('show'); continue; }
+    const x = (_lp.x + 1)/2*w, y = (1 - _lp.y)/2*h;
+    t.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, calc(-100% - 16px))`;
+  }
+}
+
+/* ================= observation sheet ================= */
+function picSVG(kind){
+  const liq = kind === 'flour' ? '#ece6d8' : '#e8c463';
+  const ink = '#2a2833';
+  const flask = `<path d="M42 50 L42 62 L18 108 Q16 114 22 114 L78 114 Q84 114 82 108 L58 62 L58 50" fill="none" stroke="${ink}" stroke-width="2.4" stroke-linejoin="round"/>`;
+  const liquid = `<path d="M26.3 92 L73.7 92 L82 108 Q84 114 78 114 L22 114 Q16 114 18 108 Z" fill="${liq}"/>`;
+  const neck = `<rect x="40" y="43" width="20" height="9" rx="3" fill="#d63a40" stroke="${ink}" stroke-width="2"/>`;
+  let extra = '', bal = '';
+  if (kind === 'soda'){
+    bal = `<path d="M44 44 C30 40 26 22 34 12 C42 2 58 2 66 12 C74 22 70 40 56 44 Z" fill="#d63a40" stroke="${ink}" stroke-width="2"/>`;
+    extra = [ [32,90,4],[40,88,5],[50,87,4.5],[60,88,5],[68,90,4],[36,84,3.5],[46,82,4],[56,83,3.5],[64,85,3],[45,102,2.2],[55,98,2],[62,106,2.2],[38,106,1.8] ]
+      .map(([x,y,r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="${ink}" stroke-width="1.3"/>`).join('');
+  } else {
+    bal = `<path d="M43 46 C32 38 14 40 12 54 C11 64 22 68 31 60 C37 55 41 51 43 46 Z" fill="#d63a40" stroke="${ink}" stroke-width="2"/>`;
+    if (kind === 'flour') extra = `<path d="M21 112 Q50 104 79 112 Z" fill="#fff" stroke="${ink}" stroke-width="1.3"/>` +
+      [[34,98],[48,96],[60,101],[42,104],[66,96],[30,106]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#fff" stroke="${ink}" stroke-width=".8"/>`).join('');
+  }
+  return `<svg viewBox="0 0 100 120" aria-hidden="true">${liquid}${extra}${flask}${bal}${neck}</svg>`;
+}
+const PIC_OPTS = [['flour','풍선이 처지고 식초가 뿌옇다'],['soda','풍선이 부풀고 거품이 생겼다'],['none','풍선이 처지고 식초가 맑다']];
+const ROWS = [
+  { label:'고무풍선과 삼각 플라스크 안의 모습', pic:true, opts:PIC_OPTS.map(p => p[1]), ans:{ flour:0, soda:1 },
+    text:{ flour:'풍선은 축 처져 있고, 식초가 뿌옇게 흐려져 바닥에 가루가 가라앉았다.', soda:'풍선이 크게 부풀고, 플라스크 안에 거품이 가득 생겼다.' } },
+  { label:'고무풍선의 변화', opts:['부풀어 올랐다', '변화가 없다(축 처져 있다)', '작아졌다'], ans:{ flour:1, soda:0 },
+    text:{ flour:'풍선을 세워도 부풀지 않고 다시 축 처졌다.', soda:'풍선이 점점 부풀어 올랐다.' } },
+  { label:'삼각 플라스크 안의 변화', opts:['거품이 많이 생겼다', '뿌옇게 흐려지고 가라앉았다', '아무 변화가 없다'], ans:{ flour:1, soda:0 },
+    text:{ flour:'밀가루가 식초에 섞여 뿌옇게 흐려지고, 시간이 지나자 바닥에 가라앉았다.', soda:'거품이 부글부글 많이 생겼다. 기체가 생겨 풍선으로 올라갔다.' } },
+  { label:'물질의 성질 변화', opts:['성질이 변했다', '성질이 변하지 않았다'], ans:{ flour:1, soda:0 },
+    text:{ flour:'새로운 물질이 생기지 않아 성질이 변하지 않았다.', soda:'이산화 탄소라는 새로운 물질이 생겨 성질이 변했다.' } }
+];
+const COLS = [['flour','밀가루와 식초를 섞었을 때'], ['soda','탄산수소 나트륨과 식초를 섞었을 때']];
+const SHEET = { mode:'check', pick:{}, graded:false, open:{}, self:{} };
+try { const m = localStorage.getItem('wb-mode'); if (m === 'check' || m === 'flap') SHEET.mode = m; } catch (_) {}
+function cellKey(r, c){ return r + ':' + c; }
+function renderSheet(){
+  const done = S.step >= 5;
+  document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === SHEET.mode)));
+  $('#modeNote').textContent = SHEET.mode === 'check'
+    ? '관찰한 결과에 맞는 것을 골라 체크해요. 다 고르면 「확인하기」를 눌러 맞았는지 봐요.'
+    : '먼저 머릿속으로 답을 떠올린 뒤, 가림막을 눌러 열어 확인해요.' + (done ? '' : ' 가림막은 실험을 마친 뒤에 열 수 있어요.');
+  let html = `<div class="trow thead"><div>구분</div>${COLS.map(c => `<div>${c[1]}</div>`).join('')}</div>`;
+  ROWS.forEach((row, r) => {
+    html += `<div class="trow"><div class="rlabel">${row.label}</div>`;
+    COLS.forEach(([ck]) => {
+      const key = cellKey(r, ck);
+      if (SHEET.mode === 'check'){
+        const sel = SHEET.pick[key];
+        const grade = SHEET.graded && sel !== undefined ? (sel === row.ans[ck] ? 'ok' : 'bad') : (SHEET.graded ? 'bad' : '');
+        html += `<div class="cell ${grade}"><div class="opts" role="group" aria-label="${row.label} · ${ck === 'flour' ? '밀가루' : '탄산수소 나트륨'}">`;
+        row.opts.forEach((o, k) => {
+          if (row.pic) html += `<button class="opt pic" data-k="${key}" data-v="${k}" aria-pressed="${sel === k}">${picSVG(PIC_OPTS[k][0])}<span>${o}</span></button>`;
+          else html += `<button class="opt" data-k="${key}" data-v="${k}" aria-pressed="${sel === k}">${o}</button>`;
+        });
+        html += `</div>`;
+        if (SHEET.graded) html += `<div class="verdict ${grade}">${grade === 'ok' ? '맞았어요!' : sel === undefined ? '아직 고르지 않았어요' : '다시 생각해 봐요'}</div>`;
+        if (SHEET.showAns) html += `<div class="ans">${row.pic ? picSVG(ck) : ''}<span>${row.text[ck]}</span></div>`;
+        html += `</div>`;
+      } else {
+        const open = !!SHEET.open[key];
+        html += `<div class="cell flapcell"><div class="ans">${row.pic ? picSVG(ck) : ''}<span>${row.text[ck]}</span></div>
+          <button class="cover ${open ? 'open' : ''}" data-cover="${key}" aria-label="가림막 열기"><b>${done ? '눌러서 열기' : '실험 후에 열려요'}</b>${done ? '먼저 답을 떠올려 봐요' : '먼저 실험을 끝내요'}</button></div>`;
+      }
+    });
+    html += `</div>`;
+  });
+  $('#tbl').innerHTML = html;
+  const act = $('#actions');
+  if (SHEET.mode === 'check'){
+    const total = ROWS.length * COLS.length;
+    const right = Object.entries(SHEET.pick).filter(([k, v]) => { const [r, c] = k.split(':'); return ROWS[+r].ans[c] === v; }).length;
+    act.innerHTML = `<button class="btn primary" id="gradeBtn">확인하기</button><button class="btn" id="ansBtn">${SHEET.showAns ? '정답 숨기기' : '정답 보기'}</button><button class="btn" id="clearBtn">다시 고르기</button>` +
+      (SHEET.graded ? `<span class="score">${total}칸 중 ${right}칸 맞았어요${right === total ? ' — 완벽해요!' : ''}</span>` : '');
+    $('#gradeBtn').onclick = () => { if (S.step < 5){ toast('실험을 먼저 끝낸 뒤 확인해요.'); return; } SHEET.graded = true; renderSheet(); };
+    $('#ansBtn').onclick = () => { if (S.step < 5){ toast('정답은 실험을 마친 뒤에 볼 수 있어요.'); return; } SHEET.showAns = !SHEET.showAns; renderSheet(); };
+    $('#clearBtn').onclick = () => { SHEET.pick = {}; SHEET.graded = false; SHEET.showAns = false; renderSheet(); };
+  } else {
+    act.innerHTML = `<button class="btn" id="openAll">가림막 모두 열기</button><button class="btn" id="closeAll">모두 다시 가리기</button>`;
+    $('#openAll').onclick = () => { if (S.step < 5){ toast('가림막은 실험을 마친 뒤에 열 수 있어요.'); return; } ROWS.forEach((_, r) => COLS.forEach(([c]) => SHEET.open[cellKey(r, c)] = true)); renderSheet(); };
+    $('#closeAll').onclick = () => { SHEET.open = {}; renderSheet(); };
+  }
+  $('#tbl').querySelectorAll('.opt').forEach(b => b.onclick = () => { SHEET.pick[b.dataset.k] = +b.dataset.v; SHEET.graded = false; renderSheet(); const nb = $('#tbl').querySelector(`.opt[data-k="${b.dataset.k}"][data-v="${b.dataset.v}"]`); nb && nb.focus(); });
+  $('#tbl').querySelectorAll('.cover').forEach(b => b.onclick = () => { if (S.step < 5){ toast('가림막은 실험을 마친 뒤에 열 수 있어요.'); return; } SHEET.open[b.dataset.cover] = true; b.classList.add('open'); });
+}
+const SELF = [
+  ['지식·이해', '서로 다른 물질을 섞었을 때 나타나는 변화를 설명할 수 있어요.'],
+  ['과정·기능', '서로 다른 물질을 섞었을 때 나타나는 변화를 관찰하고 비교할 수 있어요.'],
+  ['가치·태도', '서로 다른 물질을 섞었을 때의 변화에 흥미와 호기심을 가지고 참여했어요.']
+];
+const FACES = [
+  ['잘했어요', '<circle cx="15" cy="15" r="12" fill="none" stroke="#2a2833" stroke-width="2"/><circle cx="10.5" cy="12" r="1.5" fill="#2a2833"/><circle cx="19.5" cy="12" r="1.5" fill="#2a2833"/><path d="M9 17.5c3 4 9 4 12 0" fill="none" stroke="#2a2833" stroke-width="2" stroke-linecap="round"/>'],
+  ['보통이에요', '<circle cx="15" cy="15" r="12" fill="none" stroke="#2a2833" stroke-width="2"/><circle cx="10.5" cy="12" r="1.5" fill="#2a2833"/><circle cx="19.5" cy="12" r="1.5" fill="#2a2833"/><path d="M10 19h10" fill="none" stroke="#2a2833" stroke-width="2" stroke-linecap="round"/>'],
+  ['더 노력할게요', '<circle cx="15" cy="15" r="12" fill="none" stroke="#2a2833" stroke-width="2"/><circle cx="10.5" cy="12" r="1.5" fill="#2a2833"/><circle cx="19.5" cy="12" r="1.5" fill="#2a2833"/><path d="M9 21c3-3.5 9-3.5 12 0" fill="none" stroke="#2a2833" stroke-width="2" stroke-linecap="round"/>']
+];
+function renderSelf(){
+  $('#self').innerHTML = SELF.map(([tag, txt], i) => `<div class="selfitem"><div><small>${tag}</small>${txt}</div><div class="faces" role="group" aria-label="${tag} 스스로 평가">` +
+    FACES.map(([name, svg], k) => `<button class="face" data-i="${i}" data-k="${k}" aria-label="${name}" title="${name}" aria-pressed="${SHEET.self[i] === k}"><svg viewBox="0 0 30 30">${svg}</svg></button>`).join('') + `</div></div>`).join('');
+  $('#self').querySelectorAll('.face').forEach(b => b.onclick = () => { SHEET.self[+b.dataset.i] = +b.dataset.k; renderSelf(); });
+}
+document.querySelectorAll('.modes button').forEach(b => b.onclick = () => { SHEET.mode = b.dataset.mode; try { localStorage.setItem('wb-mode', SHEET.mode); } catch (_) {} renderSheet(); });
+$('#exCover').onclick = () => { if (S.step < 5){ toast('예시 답은 실험을 마친 뒤에 볼 수 있어요.'); return; } $('#exCover').classList.add('open'); };
+function openSheet(){
+  renderSheet(); renderSelf(); $('#sheet').hidden = false; $('#sheetClose').focus();
+  if (S.step >= 5 && !S.sheetSeen){ S.sheetSeen = true; refreshHud(); }
+}
+function closeSheet(){ $('#sheet').hidden = true; canvas.focus(); }
+function resetSheet(){ SHEET.pick = {}; SHEET.graded = false; SHEET.showAns = false; SHEET.open = {}; SHEET.self = {}; $('#sumText').value = ''; $('#exCover').classList.remove('open'); $('#sheet').hidden = true; }
+$('#sheetClose').onclick = closeSheet;
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+
+/* ================= loop ================= */
+function resize(){
+  const w = innerWidth, h = innerHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  for (const m of lineMats) m.resolution.set(w, h);
+}
+addEventListener('resize', resize); resize();
+
+const clock = new THREE.Clock();
+let time = 0;
+function frame(){
+  const dt = Math.min(clock.getDelta(), 0.05); time += dt;
+  if (tween){
+    tween.t += dt; const k = easeIO(clamp(tween.t/tween.dur, 0, 1));
+    camera.position.lerpVectors(tween.p0, tween.p1, k); controls.target.lerpVectors(tween.t0, tween.t1, k);
+    if (tween.t >= tween.dur) tween = null;
+  }
+  if (toastT > 0){ toastT -= dt; if (toastT <= 0) $('#toast').classList.remove('show'); }
+  applyHeld(dt);
+  { const p = camera.position, t = controls.target;
+    if (!Number.isFinite(p.x + p.y + p.z + t.x + t.y + t.z)){ const s = STEP_CAM[S.step]; tween = null; p.set(...s.pos); t.set(...s.tgt); } }
+  controls.update(); keepInBounds();
+  simulate(dt, time);
+  updateTags();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+(async () => {
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load(`700 40px "Gowun Batang"`, '가나'), document.fonts.load(`400 40px "Gowun Batang"`, '가나'),
+        document.fonts.load(`400 40px "Gowun Dodum"`, '가나'), document.fonts.load(`400 40px "Nanum Pen Script"`, '가나')
+      ]),
+      new Promise(r => setTimeout(r, 3500))
+    ]);
+  } catch (e) {}
+  drawLeft(); drawRight(); refreshHud();
+  popTo(g1, 1);
+  flyTo(1);
+  $('#veil').classList.add('gone');
+  window.__bookReady = true;
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
