@@ -1054,7 +1054,7 @@ function raise(){
   if (S.pred === null){ toast('먼저 왼쪽 페이지에서 결과를 예상해 보세요.'); stopPlay(); flyTo(1); return; }
   S.phase = 'running'; S.tR = 0; S.userCam = false; stopPlay();
   drawRight();
-  flyTo(4, '두 풍선을 동시에 세웠어요. 가루가 식초 속으로 떨어져요.');
+  flyTo(5, '두 풍선을 동시에 세웠어요. 두 플라스크에서 무엇이 달라지는지 비교해 봐요.');
 }
 function openFlap(){
   if (S.flapOpen) return;
@@ -1406,7 +1406,7 @@ addEventListener('keydown', e => {
   });
 }
 
-const VIEWS = { all:0, left:1, lab:() => 2 };
+const VIEWS = { all:0, left:1, lab:() => S.phase === 'idle' ? 2 : 5 };
 /* ================= fixed, kid-friendly camera ================= */
 // Children cannot rotate, slide or zoom: they see the whole book first, then tap a side
 // (or one of three big buttons) to jump to a fixed front view. Teachers can press T to unlock.
