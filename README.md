@@ -5,7 +5,6 @@
 | `index.html` | 목차 페이지 (네 페이지로 가는 링크) |
 | `lesson1-textbook/` | 1차시 과학 교과서 38~39쪽 |
 | `lesson1-workbook/` | 1차시 실험관찰 22~23쪽 (직접 해 보기) |
-| `lesson1-stations/` | 1차시 모둠 순환 실험실 (일곱 가지 물질 섞기, 개별 관찰 기록) |
 | `lesson2-textbook/` | 2차시 과학 교과서 40~41쪽 |
 | `lesson2-workbook/` | 2차시 실험관찰 24~25쪽 (직접 해 보기) |
 
