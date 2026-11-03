@@ -1447,7 +1447,7 @@ let viewMode = 'overview';
   const mark = k => { box.querySelectorAll('button[data-v]').forEach(b => b.setAttribute('aria-pressed', String(keyOf(b.dataset.v) === k))); scrollBox.hidden = k !== VIEWS.left; };
 
   // reading view: the left page fills the screen width, and children scroll it like a document
-  const READ_MIN = -0.85, READ_MAX = 0.85, READ_EL = 1.2;
+  const READ_MIN = -0.95, READ_MAX = 0.95, READ_EL = 1.5;
   let readZ = 0.5;
   function readDist(){
     const asp = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 1.6;
