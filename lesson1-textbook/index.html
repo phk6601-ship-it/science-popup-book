@@ -1423,6 +1423,8 @@ let viewMode = 'overview';
 #views button:hover{background:var(--hud-line)}
 #views button[aria-pressed="true"]{background:var(--accent); color:#fff; border-color:var(--accent)}
 #views button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#views .scroll{display:flex; gap:6px}
+#views .scroll button{min-width:0; flex:1; padding:0 10px; white-space:nowrap; gap:4px}
 #views svg{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none}
 @media (max-width:620px){
   #views{flex-direction:row; bottom:calc(132px + env(safe-area-inset-bottom,0px)); right:auto; left:50%; transform:translateX(-50%); padding:6px; gap:6px}
@@ -1435,12 +1437,57 @@ let viewMode = 'overview';
     `<button data-v="left"><svg viewBox="0 0 24 24"><path d="M4 6c3-1.5 5-1.5 8 0v13c-3-1.5-5-1.5-8 0z"/><path d="M7 10h3M7 13h3"/></svg>책 읽기</button>` +
     `<button data-v="lab"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg>실험 보기</button>`;
   document.body.appendChild(box);
+  box.insertAdjacentHTML('beforeend',
+    `<div class="scroll" hidden><button data-s="-1" aria-label="책 위쪽 보기"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>위로</button>` +
+    `<button data-s="1" aria-label="책 아래쪽 보기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>아래로</button></div>`);
+  const scrollBox = box.querySelector('.scroll');
   const keyOf = v => v === 'all' ? VIEWS.all : v === 'left' ? VIEWS.left : VIEWS.lab();
-  box.querySelectorAll('button').forEach(b => b.onclick = () => { S.userCam = false; flyTo(keyOf(b.dataset.v)); });
-  const mark = k => box.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(keyOf(b.dataset.v) === k)));
+  box.querySelectorAll('button[data-v]').forEach(b => b.onclick = () => { S.userCam = false; window.__readTop = b.dataset.v === 'left'; flyTo(keyOf(b.dataset.v)); });
+  box.querySelectorAll('button[data-s]').forEach(b => b.onclick = () => scrollRead(+b.dataset.s * 0.5, true));
+  const mark = k => { box.querySelectorAll('button[data-v]').forEach(b => b.setAttribute('aria-pressed', String(keyOf(b.dataset.v) === k))); scrollBox.hidden = k !== VIEWS.left; };
+
+  // reading view: the left page fills the screen width, and children scroll it like a document
+  const READ_MIN = -0.85, READ_MAX = 0.85, READ_EL = 1.2;
+  let readZ = 0.5;
+  function readDist(){
+    const asp = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 1.6;
+    const hf = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) * asp);
+    return Math.max(1.5, 1.18 / Math.tan(hf));
+  }
+  function readPose(z){ const d = readDist(); return { tgt:V(-1.05, PAGE_Y, z), pos:V(-1.05, PAGE_Y + d*Math.sin(READ_EL), z + d*Math.cos(READ_EL)) }; }
+  function readAt(z, dur = 1.2){
+    readZ = clamp(z, READ_MIN, READ_MAX); const P = readPose(readZ);
+    tween = { t:0, dur: RM ? 0.01 : dur, p0:camera.position.clone(), t0:controls.target.clone(), p1:P.pos, t1:P.tgt };
+  }
+  function scrollRead(dz, smooth){
+    if (viewMode !== 'read') return;
+    const z = clamp(readZ + dz, READ_MIN, READ_MAX); if (z === readZ) return;
+    if (smooth){ readAt(z, 0.5); return; }
+    const d = z - readZ; readZ = z; tween = null;
+    camera.position.z += d; controls.target.z += d;
+  }
+  window.__readAt = readAt;
 
   const fly0 = flyTo;
-  flyTo = (k, cap) => { viewMode = k === VIEWS.all ? 'overview' : 'detail'; mark(k); return fly0(k, cap); };
+  flyTo = (k, cap) => {
+    const r = fly0(k, cap);
+    viewMode = k === VIEWS.all ? 'overview' : k === VIEWS.left ? 'read' : 'detail';
+    mark(k);
+    if (k === VIEWS.left){ readAt(window.__readTop ? READ_MIN : (window.__readZ ?? 0.55)); window.__readTop = false; window.__readZ = undefined;
+      if (!cap) setCaption('위아래로 밀거나 ▲▼ 버튼을 눌러 책을 읽어요.'); }
+    return r;
+  };
+  // swipe or wheel to scroll the reading view
+  let sy = null;
+  canvas.addEventListener('pointerdown', e => { if (viewMode === 'read') sy = { y:e.clientY, id:e.pointerId }; });
+  canvas.addEventListener('pointermove', e => {
+    if (!sy || e.pointerId !== sy.id || viewMode !== 'read') return;
+    const dy = e.clientY - sy.y; sy.y = e.clientY;
+    const per = 2 * readDist() * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) / (innerHeight || 800) / Math.sin(READ_EL);
+    scrollRead(-dy * per, false);
+  });
+  addEventListener('pointerup', () => { sy = null; });
+  canvas.addEventListener('wheel', e => { if (viewMode === 'read'){ e.preventDefault(); scrollRead(e.deltaY * 0.0015, false); } }, { passive:false });
   const mc0 = moveCamera, pc0 = panCamera, ah0 = applyHeld;
   moveCamera = (a, b, c) => { if (!window.__camLocked) mc0(a, b, c); };
   panCamera = (a, b) => { if (!window.__camLocked) pc0(a, b); };
@@ -1473,6 +1520,7 @@ let viewMode = 'overview';
     if (!hit) return;
     e.stopImmediatePropagation(); e.preventDefault();
     S.userCam = false;
+    if (hit.point.x < 0) window.__readZ = hit.point.z;
     flyTo(hit.point.x < 0 ? VIEWS.left : VIEWS.lab());
   }, true);
 }
