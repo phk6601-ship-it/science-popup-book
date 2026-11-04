@@ -143,7 +143,7 @@ button{font-family:inherit}
   position:fixed; left:50%; transform:translateX(-50%);
   top:calc(16px + env(safe-area-inset-top,0px));
   background:var(--hud-fg); color:var(--desk); padding:10px 16px; border-radius:10px; font-size:14px; line-height:1.45;
-  max-width:min(520px, calc(100% - 32px)); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none;
+  max-width:min(520px, calc(100% - 32px)); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none; z-index:40;
 }
 #toast.show{opacity:1}
 @media (max-width:760px){ #toast{top:auto; bottom:calc(122px + env(safe-area-inset-bottom,0px))} }

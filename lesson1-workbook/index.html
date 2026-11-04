@@ -142,7 +142,7 @@ button{font-family:inherit}
   position:fixed; left:50%; transform:translateX(-50%);
   top:calc(16px + env(safe-area-inset-top,0px));
   background:var(--hud-fg); color:var(--desk); padding:10px 16px; border-radius:10px; font-size:14px; line-height:1.45;
-  max-width:min(520px, calc(100% - 32px)); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none;
+  max-width:min(520px, calc(100% - 32px)); text-align:center; transition:opacity .3s; opacity:0; pointer-events:none; z-index:40;
 }
 #toast.show{opacity:1}
 @media (max-width:760px){ #toast{top:auto; bottom:calc(122px + env(safe-area-inset-bottom,0px))} }
@@ -1699,12 +1699,18 @@ const COLS = [['flour','밀가루와 식초를 섞었을 때'], ['soda','탄산�
 const SHEET = { mode:'check', pick:{}, graded:false, open:{}, self:{} };
 try { const m = localStorage.getItem('wb-mode'); if (m === 'check' || m === 'flap') SHEET.mode = m; } catch (_) {}
 function cellKey(r, c){ return r + ':' + c; }
+let gateKey = null, gateT = 0;
+function gate(key, msg, fn){
+  if (S.step >= 5 || (gateKey === key && performance.now() - gateT < 10000)){ gateKey = null; fn(); return; }
+  gateKey = key; gateT = performance.now();
+  toast(msg + ' 그래도 보려면 한 번 더 눌러요.');
+}
 function renderSheet(){
   const done = S.step >= 5;
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === SHEET.mode)));
   $('#modeNote').textContent = SHEET.mode === 'check'
-    ? '관찰한 결과에 맞는 것을 골라 체크해요. 다 고르면 「확인하기」를 눌러 맞았는지 봐요.'
-    : '먼저 머릿속으로 답을 떠올린 뒤, 가림막을 눌러 열어 확인해요.' + (done ? '' : ' 가림막은 실험을 마친 뒤에 열 수 있어요.');
+    ? '관찰한 결과에 맞는 것을 골라 체크해요. 다 고르면 「확인하기」를 눌러 맞았는지 봐요.' + (done ? '' : ' 실험을 끝낸 뒤에 확인하는 것이 좋아요.')
+    : '먼저 머릿속으로 답을 떠올린 뒤, 가림막을 눌러 열어 확인해요.' + (done ? '' : ' 실험을 끝낸 뒤에 여는 것이 좋아요.');
   let html = `<div class="trow thead"><div>구분</div>${COLS.map(c => `<div>${c[1]}</div>`).join('')}</div>`;
   ROWS.forEach((row, r) => {
     html += `<div class="trow"><div class="rlabel">${row.label}</div>`;
@@ -1725,7 +1731,7 @@ function renderSheet(){
       } else {
         const open = !!SHEET.open[key];
         html += `<div class="cell flapcell"><div class="ans">${row.pic ? picSVG(ck) : ''}<span>${row.text[ck]}</span></div>
-          <button class="cover ${open ? 'open' : ''}" data-cover="${key}" aria-label="가림막 열기"><b>${done ? '눌러서 열기' : '실험 후에 열려요'}</b>${done ? '먼저 답을 떠올려 봐요' : '먼저 실험을 끝내요'}</button></div>`;
+          <button class="cover ${open ? 'open' : ''}" data-cover="${key}" aria-label="가림막 열기"><b>눌러서 열기</b>${done ? '먼저 답을 떠올려 봐요' : '실험을 먼저 끝내면 좋아요'}</button></div>`;
       }
     });
     html += `</div>`;
@@ -1737,16 +1743,16 @@ function renderSheet(){
     const right = Object.entries(SHEET.pick).filter(([k, v]) => { const [r, c] = k.split(':'); return ROWS[+r].ans[c] === v; }).length;
     act.innerHTML = `<button class="btn primary" id="gradeBtn">확인하기</button><button class="btn" id="ansBtn">${SHEET.showAns ? '정답 숨기기' : '정답 보기'}</button><button class="btn" id="clearBtn">다시 고르기</button>` +
       (SHEET.graded ? `<span class="score">${total}칸 중 ${right}칸 맞았어요${right === total ? ' — 완벽해요!' : ''}</span>` : '');
-    $('#gradeBtn').onclick = () => { if (S.step < 5){ toast('실험을 먼저 끝낸 뒤 확인해요.'); return; } SHEET.graded = true; renderSheet(); };
-    $('#ansBtn').onclick = () => { if (S.step < 5){ toast('정답은 실험을 마친 뒤에 볼 수 있어요.'); return; } SHEET.showAns = !SHEET.showAns; renderSheet(); };
+    $('#gradeBtn').onclick = () => gate('grade', '아직 실험을 끝내지 않았어요.', () => { SHEET.graded = true; renderSheet(); });
+    $('#ansBtn').onclick = () => { if (SHEET.showAns){ SHEET.showAns = false; renderSheet(); return; } gate('ans', '아직 실험을 끝내지 않았어요.', () => { SHEET.showAns = true; renderSheet(); }); };
     $('#clearBtn').onclick = () => { SHEET.pick = {}; SHEET.graded = false; SHEET.showAns = false; renderSheet(); };
   } else {
     act.innerHTML = `<button class="btn" id="openAll">가림막 모두 열기</button><button class="btn" id="closeAll">모두 다시 가리기</button>`;
-    $('#openAll').onclick = () => { if (S.step < 5){ toast('가림막은 실험을 마친 뒤에 열 수 있어요.'); return; } ROWS.forEach((_, r) => COLS.forEach(([c]) => SHEET.open[cellKey(r, c)] = true)); renderSheet(); };
+    $('#openAll').onclick = () => gate('openAll', '아직 실험을 끝내지 않았어요.', () => { ROWS.forEach((_, r) => COLS.forEach(([c]) => SHEET.open[cellKey(r, c)] = true)); renderSheet(); });
     $('#closeAll').onclick = () => { SHEET.open = {}; renderSheet(); };
   }
   $('#tbl').querySelectorAll('.opt').forEach(b => b.onclick = () => { SHEET.pick[b.dataset.k] = +b.dataset.v; SHEET.graded = false; renderSheet(); const nb = $('#tbl').querySelector(`.opt[data-k="${b.dataset.k}"][data-v="${b.dataset.v}"]`); nb && nb.focus(); });
-  $('#tbl').querySelectorAll('.cover').forEach(b => b.onclick = () => { if (S.step < 5){ toast('가림막은 실험을 마친 뒤에 열 수 있어요.'); return; } SHEET.open[b.dataset.cover] = true; b.classList.add('open'); });
+  $('#tbl').querySelectorAll('.cover').forEach(b => b.onclick = () => gate('c' + b.dataset.cover, '아직 실험을 끝내지 않았어요.', () => { SHEET.open[b.dataset.cover] = true; b.classList.add('open'); }));
 }
 const SELF = [
   ['지식·이해', '서로 다른 물질을 섞었을 때 나타나는 변화를 설명할 수 있어요.'],
@@ -1764,7 +1770,7 @@ function renderSelf(){
   $('#self').querySelectorAll('.face').forEach(b => b.onclick = () => { SHEET.self[+b.dataset.i] = +b.dataset.k; renderSelf(); });
 }
 document.querySelectorAll('.modes button').forEach(b => b.onclick = () => { SHEET.mode = b.dataset.mode; try { localStorage.setItem('wb-mode', SHEET.mode); } catch (_) {} renderSheet(); });
-$('#exCover').onclick = () => { if (S.step < 5){ toast('예시 답은 실험을 마친 뒤에 볼 수 있어요.'); return; } $('#exCover').classList.add('open'); };
+$('#exCover').onclick = () => gate('ex', '아직 실험을 끝내지 않았어요.', () => $('#exCover').classList.add('open'));
 function openSheet(){
   renderSheet(); renderSelf(); $('#sheet').hidden = false; $('#sheetClose').focus();
   if (S.step >= 5 && !S.sheetSeen){ S.sheetSeen = true; refreshHud(); }
