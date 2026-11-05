@@ -1125,7 +1125,7 @@ function drawLeft(){
   c.fillText('·  불꽃의 모양, 밝기, 색깔, 따뜻한 정도 등을 살펴봐요.', mL + 24, y + 88);
   c.fillText('·  알코올램프 사용법은 「과학」 104쪽을 참고해요.', mL + 24, y + 128);
   y += 176;
-  const ready = S.step >= 4;
+  const ready = true;
   c.font = `700 30px ${F.sans}`; const bt = '관찰 기록지 펼치기 →'; const btw = c.measureText(bt).width + 60;
   c.fillStyle = ready ? COL.accent : '#fff'; rr(c, mL, y, btw, 64, 32); c.fill();
   c.strokeStyle = ready ? COL.accent : COL.ink; c.lineWidth = 2.5; rr(c, mL, y, btw, 64, 32); c.stroke();
@@ -1655,14 +1655,18 @@ const ROWS = [
     text:{ candle:'시간이 지날수록 양초의 길이가 점점 줄어들고, 녹은 촛농이 흘러내려요.', lamp:'시간이 지날수록 알코올의 양이 점점 줄어들어요.' } }
 ];
 const COLS = [['candle', '양초가 탈 때'], ['lamp', '알코올이 탈 때']];
-const unlocked = ck => ck === 'candle' ? S.step >= 4 : S.step >= 6;
-const SHEET = { mode:'check', pick:{}, graded:false, showAns:false, open:{}, self:{} };
+const unlocked = () => true;  // the sheet is open from the start, before, during and after the experiment
+const SHEET = { mode:'check', pick:{}, graded:false, showAns:false, open:{}, self:{}, ex:false };
+// the sheet is kept in this browser, so closing the page and coming back keeps what was filled in
+function saveSheet(){ try { localStorage.setItem('wb2-sheet', JSON.stringify({ pick:SHEET.pick, open:SHEET.open, self:SHEET.self, ex:SHEET.ex, text:$('#sumText').value })); } catch (_) {} }
+try { const d = JSON.parse(localStorage.getItem('wb2-sheet') || 'null'); if (d){ Object.assign(SHEET, { pick:d.pick || {}, open:d.open || {}, self:d.self || {}, ex:!!d.ex }); $('#sumText').value = d.text || ''; if (SHEET.ex) $('#exCover').classList.add('open'); } } catch (_) {}
+$('#sumText').addEventListener('input', saveSheet);
 try { const m = localStorage.getItem('wb2-mode'); if (m === 'check' || m === 'flap') SHEET.mode = m; } catch (_) {}
 function renderSheet(){
   document.querySelectorAll('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === SHEET.mode)));
   $('#modeNote').textContent = SHEET.mode === 'check'
-    ? '관찰한 결과에 맞는 것을 골라 체크해요. 양초 칸은 양초 관찰 뒤에, 알코올 칸은 알코올 관찰 뒤에 채울 수 있어요.'
-    : '먼저 머릿속으로 답을 떠올린 뒤, 가림막을 눌러 열어 확인해요. 관찰을 마친 칸부터 열 수 있어요.';
+    ? '관찰한 결과에 맞는 것을 골라 체크해요. 실험하는 중에도, 실험을 마친 뒤에도 언제든 열어 채울 수 있고 고른 것은 저장돼요.'
+    : '먼저 머릿속으로 답을 떠올린 뒤, 가림막을 눌러 열어 확인해요.';
   let html = `<div class="trow thead"><div>구분</div>${COLS.map(c => `<div>${c[1]}</div>`).join('')}</div>`;
   ROWS.forEach((row, r) => {
     html += `<div class="trow"><div class="rlabel">${row.label}</div>`;
@@ -1703,8 +1707,8 @@ function renderSheet(){
     ROWS.forEach((row, r) => COLS.forEach(([ck]) => { if (!unlocked(ck)) return; row.groups.forEach((g, gi) => { total++; if (SHEET.pick[`${r}:${ck}:${gi}`] === g.ans[ck]) right++; }); }));
     act.innerHTML = `<button class="btn primary" id="gradeBtn">확인하기</button><button class="btn" id="ansBtn">${SHEET.showAns ? '정답 숨기기' : '정답 보기'}</button><button class="btn" id="clearBtn">다시 고르기</button>` +
       (SHEET.graded && total ? `<span class="score">${total}개 중 ${right}개 맞았어요${right === total ? ' — 완벽해요!' : ''}</span>` : '');
-    $('#gradeBtn').onclick = () => { if (S.step < 4){ toast('양초 관찰을 마친 뒤 확인해요.'); return; } SHEET.graded = true; renderSheet(); };
-    $('#ansBtn').onclick = () => { if (S.step < 4){ toast('정답은 관찰을 마친 뒤에 볼 수 있어요.'); return; } SHEET.showAns = !SHEET.showAns; renderSheet(); };
+    $('#gradeBtn').onclick = () => { SHEET.graded = true; renderSheet(); };
+    $('#ansBtn').onclick = () => { SHEET.showAns = !SHEET.showAns; renderSheet(); };
     $('#clearBtn').onclick = () => { SHEET.pick = {}; SHEET.graded = false; SHEET.showAns = false; renderSheet(); };
   } else {
     act.innerHTML = `<button class="btn" id="openAll">열 수 있는 가림막 모두 열기</button><button class="btn" id="closeAll">모두 다시 가리기</button>`;
@@ -1712,7 +1716,8 @@ function renderSheet(){
     $('#closeAll').onclick = () => { SHEET.open = {}; renderSheet(); };
   }
   $('#tbl').querySelectorAll('.opt').forEach(b => b.onclick = () => { SHEET.pick[b.dataset.k] = +b.dataset.v; SHEET.graded = false; renderSheet(); const nb = $('#tbl').querySelector(`.opt[data-k="${b.dataset.k}"][data-v="${b.dataset.v}"]`); nb && nb.focus(); });
-  $('#tbl').querySelectorAll('.cover').forEach(b => b.onclick = () => { SHEET.open[b.dataset.cover] = true; b.classList.add('open'); });
+  $('#tbl').querySelectorAll('.cover').forEach(b => b.onclick = () => { SHEET.open[b.dataset.cover] = true; b.classList.add('open'); saveSheet(); });
+  saveSheet();
 }
 const SELF = [
   ['지식·이해', '양초와 알코올이 탈 때 나타나는 공통적인 현상을 설명할 수 있어요.'],
@@ -1727,16 +1732,16 @@ const FACES = [
 function renderSelf(){
   $('#self').innerHTML = SELF.map(([tag, txt], i) => `<div class="selfitem"><div><small>${tag}</small>${txt}</div><div class="faces" role="group" aria-label="${tag} 스스로 평가">` +
     FACES.map(([name, svg], k) => `<button class="face" data-i="${i}" data-k="${k}" aria-label="${name}" title="${name}" aria-pressed="${SHEET.self[i] === k}"><svg viewBox="0 0 30 30">${svg}</svg></button>`).join('') + `</div></div>`).join('');
-  $('#self').querySelectorAll('.face').forEach(b => b.onclick = () => { SHEET.self[+b.dataset.i] = +b.dataset.k; renderSelf(); });
+  $('#self').querySelectorAll('.face').forEach(b => b.onclick = () => { SHEET.self[+b.dataset.i] = +b.dataset.k; renderSelf(); saveSheet(); });
 }
 document.querySelectorAll('.modes button').forEach(b => b.onclick = () => { SHEET.mode = b.dataset.mode; try { localStorage.setItem('wb2-mode', SHEET.mode); } catch (_) {} renderSheet(); });
-$('#exCover').onclick = () => { if (S.step < 7){ toast('예시 답은 실험을 모두 마친 뒤에 볼 수 있어요.'); return; } $('#exCover').classList.add('open'); };
+$('#exCover').onclick = () => { SHEET.ex = true; $('#exCover').classList.add('open'); saveSheet(); };
 function openSheet(){
   renderSheet(); renderSelf(); $('#sheet').hidden = false; $('#sheetClose').focus();
   if (S.step >= 4) S.sheetSeen.c = true; if (S.step >= 7) S.sheetSeen.all = true; refreshHud();
 }
 function closeSheet(){ $('#sheet').hidden = true; canvas.focus(); }
-function resetSheet(){ SHEET.pick = {}; SHEET.graded = false; SHEET.showAns = false; SHEET.open = {}; SHEET.self = {}; $('#sumText').value = ''; $('#exCover').classList.remove('open'); $('#sheet').hidden = true; }
+function resetSheet(){ SHEET.graded = false; SHEET.showAns = false; $('#sheet').hidden = true; }
 $('#sheetClose').onclick = closeSheet;
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
 
