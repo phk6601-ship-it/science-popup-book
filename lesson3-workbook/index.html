@@ -1361,7 +1361,7 @@ function drawLeft(){
     const n = i + 1;
     if (n === 1) sec('실험해요 1 · 물질이 탈 때 산소의 영향');
     if (n === 6){ y += 10; sec('실험해요 2 · 물질이 탈 때 온도의 영향'); }
-    const st = S.step > n ? 'done' : S.step === n ? 'now' : 'todo';
+    const st = S.step === n ? 'now' : (STEP_TASKS[n] || []).every(k => S.tk[k]) ? 'done' : 'todo';
     marker(c, mL + 22, y - 9, n, st);
     c.fillStyle = st === 'todo' ? COL.mute : COL.ink; c.font = `${st === 'now' ? 700 : 400} 27px ${F.serif}`;
     const lines = wrap(c, s, cw - 64);
@@ -1451,22 +1451,23 @@ function caption(){
     case 8: return !S.tk.capOff ? '⑧ 알코올램프 뚜껑을 끌어서 열고 옆에 내려놓아요.' : '⑧ 점화기를 끌어 알코올램프 심지에 대고 꾹 누르고 있으면 불이 붙어요.';
     case 9: return `⑨ 철판 가운데가 데워져요. 성냥의 머리 부분과 나무 부분 중 어느 것에 먼저 불이 붙는지 지켜봐요. (${cnt(['headLit','woodLit'])}/2)`;
     case 10: return '⑩ 뚜껑을 끌어 알코올램프에 덮어 불을 꺼요.';
-    default: return '실험 끝! 아래 「기록지」 버튼을 눌러 관찰한 것을 정리해요.';
+    default: return S.exp1Done ? '실험 끝! 아래 「기록지」 버튼을 눌러 관찰한 것을 정리해요.' : '실험 2 끝! 「실험 1 하러 가기」를 누르거나 기록지에 정리해요.';
   }
 }
 function renderActs(){
   const el = $('#acts'); let h = '';
   if (S.step === 4 || S.step === 5) h = `<button data-a="A" class="${S.tk.watchA ? 'done' : ''}">그냥 덮은 촛불 보기</button><button data-a="B" class="${S.tk.lookB ? 'done' : ''}">비커와 덮은 촛불 보기</button><button data-a="ox" class="${oxOn() ? 'on' : ''}">산소 보기: ${oxOn() ? '켬' : '끔'}</button>`;
-  if (S.step === 5) h += `<button data-a="sheet">기록지 쓰기</button><button data-a="next" class="go">실험 2 시작 →</button>`;
+  if (S.step === 5) h += `<button data-a="sheet">기록지 쓰기</button><button data-a="next" class="go">${S.exp2Done ? '실험 끝, 기록하기 →' : '실험 2 시작 →'}</button>`;
   if (S.step === 9 || S.step === 10) h = `<button data-a="close">가까이 보기</button><button data-a="heat" class="${heatOn() ? 'on' : ''}">열 흐름 보기: ${heatOn() ? '켬' : '끔'}</button>` + (S.step === 9 ? `<button data-a="ff" class="${S.ffwd > 1 ? 'on' : ''}">⏩ 빨리 감기</button>` : '');
-  if (S.step === 11) h = `<button data-a="sheet" class="go">기록지 쓰기</button>`;
+  if (S.step === 11) h = (S.exp1Done ? '' : `<button data-a="go1">실험 1 하러 가기 →</button>`) + `<button data-a="sheet" class="go">기록지 쓰기</button>`;
   if (el.dataset.h !== h){ el.innerHTML = h; el.dataset.h = h; el.querySelectorAll('button').forEach(b => b.onclick = () => act(b.dataset.a)); }
 }
 function refreshHud(){
   setCaption(caption()); renderActs();
   const chipStep = STEP_OF[S.step];
   document.querySelectorAll('#steps li').forEach(li => {
-    const k = +li.dataset.k, done = chipStep > k || (k === 6 && S.sheetSeen && S.step >= 11);
+    const CH = { 1:[1], 2:[2], 3:[3,4,5], 4:[6,7], 5:[8,9,10] };
+    const k = +li.dataset.k, done = k === 6 ? (S.sheetSeen && S.exp1Done && S.exp2Done) : CH[k].every(n => (STEP_TASKS[n] || []).every(t => S.tk[t]));
     li.classList.toggle('done', done); li.classList.toggle('now', chipStep === k && !done);
   });
   $('#bSheet').classList.toggle('pulse', (S.step === 5 && !S.sheetSeen) || S.step >= 11);
@@ -1474,7 +1475,7 @@ function refreshHud(){
 let toastT = 0;
 function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('show'); toastT = 3.6; }
 let cardT = 0;
-function infoCard(t, items){ $('#cardT').textContent = t; $('#cardL').innerHTML = items.map(x => `<li>${x}</li>`).join(''); $('#card').hidden = false; cardT = 7; }
+function infoCard(t, items){ const cb = document.getElementById('chip').getBoundingClientRect().bottom; if (cb > 0) $('#card').style.top = (cb + 10) + 'px'; $('#cardT').textContent = t; $('#cardL').innerHTML = items.map(x => `<li>${x}</li>`).join(''); $('#card').hidden = false; cardT = 7; }
 $('#cardX').onclick = () => { $('#card').hidden = true; };
 $('#bAll').onclick = () => { S.userCam = false; flyTo(camKey === 'all' ? S.step : 'all'); };
 $('#bReset').onclick = () => resetAll();
@@ -1577,13 +1578,21 @@ function act(a){
   if (a === 'close'){ S.userCam = false; flyTo(9); }
   if (a === 'sheet') openSheet();
   if (a === 'next'){ done('next1'); }
+  if (a === 'go1') startExp1();
 }
-function jumpTo(n){
-  if (n === 1){ resetAll(); return; }
-  // skip experiment 1: leave its finished state as it is, start experiment 2 fresh
-  resetExp2(); for (const k of [...STEP_TASKS[1], ...STEP_TASKS[2], ...STEP_TASKS[3], ...STEP_TASKS[4], ...STEP_TASKS[5]]) S.tk[k] = true;
-  S.transT = -1; goStep(6);
+const EXP1_KEYS = () => [...STEP_TASKS[1], ...STEP_TASKS[2], ...STEP_TASKS[3], ...STEP_TASKS[4], ...STEP_TASKS[5]];
+// start one experiment fresh; the other experiment's finished state is kept
+function startExp1(){
+  resetExp1(); for (const k of EXP1_KEYS()) S.tk[k] = false;
+  Object.assign(S, { kiN:0, covT:-1, obsT:0, outA:false, lookT:-1, lookWhich:'', oxUser:null, hold:0, exp1Done:false });
+  S.transT = -1; goStep(1);
 }
+function startExp2(){ resetExp2(); S.exp2Done = false; S.transT = -1; goStep(6); }
+function pickExp(k){
+  if (expOf(S.step) === k && !(k === 2 && S.step >= 11)){ S.userCam = false; flyTo(S.step); return; }
+  if (k === 1) startExp1(); else startExp2();
+}
+function jumpTo(n){ if (n === 1) startExp1(); else startExp2(); }
 
 /* ================= picking + dragging ================= */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
@@ -1999,7 +2008,10 @@ function simulate(dt, time){
   }
   simE1(dt, time); simE2(dt, time);
   tickSparks(dt); tickSmoke(dt, time); tickPuffs(dt);
-  if (S.transT >= 0){ S.transT += dt; if (S.transT > (S.step === 4 ? 2.0 : 1.1)){ S.transT = -1; if (S.step < 11) goStep(S.step + 1); } }
+  if (S.transT >= 0){ S.transT += dt; if (S.transT > (S.step === 4 ? 2.0 : 1.1)){ S.transT = -1;
+    if (S.step === 5){ S.exp1Done = true; if (S.exp2Done) goStep(11); else startExp2(); }
+    else if (S.step === 10){ S.exp2Done = true; goStep(11); }
+    else if (S.step < 11) goStep(S.step + 1); } }
 }
 
 /* ================= reset ================= */
@@ -2143,11 +2155,77 @@ function frame(){
     if (!Number.isFinite(p.x + p.y + p.z + t.x + t.y + t.z)){ const s = STEP_CAM[S.step]; tween = null; p.set(...s.pos); t.set(...s.tgt); } }
   controls.update(); keepInBounds();
   simulate(dt, time);
-  updateTags();
+  updateTags(); chooser.sync();
   if (S.step === 4 || S.step === 5 || S.step === 9 || S.step === 10) renderActs();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
+/* ================= experiment chooser: 실험 1 / 실험 2 right on the first screen ================= */
+// A big picture card on start, plus two buttons that always stay in the progress chip.
+const EXP_SVG = {
+  1:`<svg viewBox="0 0 160 100" aria-hidden="true"><g fill="none" stroke="#2a2833" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <ellipse cx="45" cy="88" rx="30" ry="5" fill="#dcdce1"/><ellipse cx="115" cy="88" rx="30" ry="5" fill="#dcdce1"/>
+    <path d="M24 86V26q0-6 6-6h30q6 0 6 6v60" fill="#e4eef4" fill-opacity=".55"/><path d="M94 86V26q0-6 6-6h30q6 0 6 6v60" fill="#e4eef4" fill-opacity=".55"/>
+    <path d="M24 40q-10 0-10 12t10 12"/><path d="M94 40q-10 0-10 12t10 12"/>
+    <rect x="36" y="78" width="18" height="7" rx="2" fill="#f7f3ea"/><rect x="114" y="78" width="18" height="7" rx="2" fill="#f7f3ea"/>
+    <path d="M100 86V68h12v18" fill="#f2c14e"/></g>
+    <path d="M45 77q-5-7 0-14q5 7 0 14z" fill="#ff9a3a" opacity=".55"/><path d="M123 77q-7-10 0-20q7 10 0 20z" fill="#ff8a2a"/><path d="M123 75q-3-5 0-10q3 5 0 10z" fill="#ffd34d"/>
+    <g fill="#5d9bff" stroke="#2a2833" stroke-width="1"><circle cx="104" cy="58" r="2.6"/><circle cx="110" cy="50" r="2.6"/><circle cx="116" cy="42" r="2.6"/><circle cx="106" cy="38" r="2.6"/></g></svg>`,
+  2:`<svg viewBox="0 0 160 100" aria-hidden="true"><g fill="none" stroke="#2a2833" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M30 36h100l-6 6H36z" fill="#a9afb8"/><path d="M50 42L36 94M110 42l14 52M80 42v52" stroke="#8e939b"/>
+    <path d="M66 94q-4-22 14-24q18 2 14 24z" fill="#f0c27a"/><rect x="77" y="62" width="6" height="8" fill="#ddd"/>
+    <circle cx="54" cy="31" r="5" fill="#c8322e"/><rect x="99" y="28" width="16" height="5" rx="1" fill="#e7cc98"/></g>
+    <ellipse cx="80" cy="38" rx="22" ry="3" fill="#ff6a1f" opacity=".7"/><path d="M80 60q-6-10 0-20q6 10 0 20z" fill="#7f9cff"/><path d="M80 58q-3-6 0-12q3 6 0 12z" fill="#ffd34d"/>
+    <path d="M54 24q-5-8 0-14q5 6 0 14z" fill="#ff8a2a"/><path d="M60 20q4-6 2-10" stroke="#9a948e" stroke-width="2" fill="none"/></svg>`
+};
+function installExpChooser(o){
+  const st = document.createElement('style');
+  st.textContent = `
+#expPick{display:flex; gap:6px; margin-top:2px}
+#expPick button{flex:1; min-height:42px; border-radius:12px; border:1.5px solid var(--hud-line); background:transparent; color:var(--hud-fg); font:700 14px var(--f-ui, sans-serif); padding:5px 10px; display:flex; align-items:center; gap:6px; cursor:pointer; white-space:nowrap}
+#expPick button svg{width:38px; height:24px; flex:none}
+#expPick button:hover{border-color:var(--accent)}
+#expPick button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+#expPick button[aria-pressed="true"] svg{background:#fff; border-radius:6px}
+#expPick button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+#chooser{position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:16px; background:rgba(30,28,36,.28)}
+#chooser[hidden]{display:none}
+#chooser .box{width:min(640px, 100%); background:var(--hud-bg, #fbf9f4); color:var(--hud-fg, #2a2833); border-radius:22px; border:1px solid var(--hud-line); padding:20px; display:flex; flex-direction:column; gap:14px; box-shadow:0 18px 50px rgba(0,0,0,.25)}
+#chooser h2{margin:0; font-family:var(--f-serif, serif); font-size:22px}
+#chooser p{margin:0; font-size:14px; color:var(--hud-mute)}
+#chooser .two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+#chooser .two button{display:flex; flex-direction:column; align-items:stretch; gap:8px; padding:12px; border-radius:16px; border:2px solid var(--hud-line); background:#fff; color:#2a2833; cursor:pointer; text-align:left; font-family:var(--f-ui, sans-serif)}
+#chooser .two button:hover, #chooser .two button:focus-visible{border-color:var(--accent); outline:none; box-shadow:0 0 0 3px rgba(217,87,47,.2)}
+#chooser .two svg{width:100%; height:auto; background:#f6f1e6; border-radius:10px}
+#chooser .two b{font-size:18px; font-family:var(--f-serif, serif)}
+#chooser .two span{font-size:13px; color:#6f6a78; line-height:1.45}
+#chooser .two em{font-style:normal; display:inline-block; align-self:flex-start; background:var(--accent); color:#fff; border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700}
+#chooser .skip{align-self:center; background:none; border:0; color:var(--hud-mute); font-size:13px; text-decoration:underline; cursor:pointer; padding:6px}
+@media (max-width:520px){ #chooser .two{grid-template-columns:1fr} #chooser .two svg{max-height:90px} #expPick button svg{display:none} }`;
+  document.head.appendChild(st);
+  const pick = document.createElement('div'); pick.id = 'expPick'; pick.setAttribute('role', 'group'); pick.setAttribute('aria-label', '실험 고르기');
+  pick.innerHTML = o.items.map(it => `<button data-k="${it.k}" aria-pressed="false">${EXP_SVG[it.k]}${it.short}</button>`).join('');
+  const chip = document.getElementById('chip'); chip.insertBefore(pick, chip.querySelector('#steps'));
+  pick.querySelectorAll('button').forEach(b => b.onclick = () => { ch.hidden = true; o.pick(+b.dataset.k); sync(); });
+  const ch = document.createElement('div'); ch.id = 'chooser'; ch.hidden = true; ch.setAttribute('role', 'dialog'); ch.setAttribute('aria-modal', 'true'); ch.setAttribute('aria-labelledby', 'chooserT');
+  ch.innerHTML = `<div class="box"><h2 id="chooserT">${o.title}</h2><p>${o.sub}</p><div class="two">` +
+    o.items.map(it => `<button data-k="${it.k}"><em>실험 ${it.k}</em>${EXP_SVG[it.k]}<b>${it.name}</b><span>${it.desc}</span></button>`).join('') +
+    `</div><button class="skip">책 먼저 둘러볼래요</button></div>`;
+  document.body.appendChild(ch);
+  ch.querySelectorAll('.two button').forEach(b => b.onclick = () => { ch.hidden = true; o.pick(+b.dataset.k); sync(); });
+  ch.querySelector('.skip').onclick = () => { ch.hidden = true; o.skip && o.skip(); };
+  ch.addEventListener('click', e => { if (e.target === ch){ ch.hidden = true; o.skip && o.skip(); } });
+  let last = null;
+  function sync(){ const k = o.current(); if (k === last) return; last = k; pick.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.k === k))); }
+  return { show(){ ch.hidden = false; ch.querySelector('.two button').focus(); }, sync };
+}
+
+const chooser = installExpChooser({ title:'어떤 실험을 해 볼까요?', sub:'그림을 누르면 그 실험 도구가 책 위에 솟아올라요. 위쪽 버튼으로 언제든 바꿀 수 있어요.', items:[
+    { k:1, short:'실험 1 · 산소', name:'산소의 영향', desc:'아크릴 통으로 덮은 두 촛불 중 어느 것이 더 오래 탈까요?' },
+    { k:2, short:'실험 2 · 온도', name:'온도의 영향', desc:'삼발이 위 철판을 가열하면 성냥의 머리와 나무 중 무엇이 먼저 탈까요?' }
+  ],
+  current:() => expOf(S.step),
+  pick:k => pickExp(k), skip:() => {} });
 /* ================= front view: button, double-tap zoom, magnetic snap ================= */
 function frontView(target, dist, topDown){
   const t = target.clone();
@@ -2340,6 +2418,7 @@ let viewMode = 'overview';
   app2.visible = false; app2.scale.set(1, 0.001, 1);
   flyTo('all');
   $('#veil').classList.add('gone');
+  chooser.show();
   window.__bookReady = true;
   requestAnimationFrame(frame);
 })();
