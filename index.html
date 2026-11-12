@@ -12,11 +12,12 @@
 :root{
   --bg:#e6dfd2; --paper:#f8f5ee; --ink:#2a2833; --mute:#6f6a78; --line:rgba(42,40,51,.16);
   --accent:#d9572f; --green:#5b8f7a; --gold:#d7a33a;
+  --tb:#2f5fa8; --tb-bg:#eef3fb; --wb:#2f8a5c; --wb-bg:#eaf6ee; --lab-bg:#fdf0ea;
   --f-serif:"Gowun Batang","Nanum Myeongjo",serif; --f-ui:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif; --f-hand:"Nanum Pen Script",cursive;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#1d1c21; --paper:#27262d; --ink:#efebe3; --mute:#aaa4b3; --line:rgba(239,235,227,.16); --accent:#f07a52; color-scheme:dark; }
+  :root{ --bg:#1d1c21; --paper:#27262d; --ink:#efebe3; --mute:#aaa4b3; --line:rgba(239,235,227,.16); --accent:#f07a52; --tb:#4f7fcc; --tb-bg:#232a38; --wb:#3fa070; --wb-bg:#21302a; --lab-bg:#33261f; color-scheme:dark; }
 }
 *{box-sizing:border-box}
 body{
@@ -33,13 +34,24 @@ h2{margin:0; font-family:var(--f-serif); font-size:clamp(26px, 6vw, 44px); line-
 h2 .num{font-size:1em; color:var(--accent); line-height:1; margin-right:.3em}
 .grid{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px}
 a.card{
-  display:flex; flex-direction:column; gap:8px; padding:18px 20px 20px; border-radius:12px; text-decoration:none; color:inherit;
-  background:var(--paper); border:1px solid var(--line); border-left:6px solid var(--gold); min-width:0;
+  display:flex; flex-direction:column; gap:8px; padding:0 20px 20px; border-radius:14px; text-decoration:none; color:inherit; overflow:hidden;
+  background:var(--tb-bg); border:2px solid var(--tb); min-width:0;
   transition:transform .15s ease, box-shadow .15s ease;
 }
-a.card.wb{border-left-color:var(--green)}
-a.card.lab{border-left-color:var(--accent)}
+a.card.wb{background:var(--wb-bg); border-color:var(--wb); border-style:dashed}
+a.card.lab{background:var(--lab-bg); border-color:var(--accent)}
 a.card.wide{grid-column:1 / -1}
+.badge{display:flex; align-items:center; gap:10px; margin:0 -20px 6px; padding:12px 20px; background:var(--tb); color:#fff}
+.badge svg{width:30px; height:30px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.badge b{font-family:var(--f-serif); font-size:24px; line-height:1}
+.badge small{margin-left:auto; font-size:14px; font-weight:700; background:rgba(255,255,255,.22); padding:4px 10px; border-radius:999px; white-space:nowrap}
+a.card.wb .badge{background:var(--wb)}
+a.card.lab .badge{background:var(--accent)}
+a.card.tb .go{color:var(--tb)} a.card.wb .go{color:var(--wb)}
+.legend{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px}
+.legend span{display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; color:#fff; font-weight:700; font-size:15px}
+.legend svg{width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.legend .l-tb{background:var(--tb)} .legend .l-wb{background:var(--wb)}
 a.card:hover{transform:translateY(-2px); box-shadow:0 8px 22px rgba(0,0,0,.12)}
 a.card:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
 .kind{font-size:12px; color:var(--mute); letter-spacing:.05em}
@@ -56,6 +68,7 @@ footer{font-size:13px; color:var(--mute); line-height:1.7}
   <header>
     <span class="eyebrow">6학년 2학기 과학 · 책 위로 솟아오르는 입체 과학책</span>
     <h1>2. 물질의 연소</h1>
+    <div class="legend" aria-label="카드 색깔 안내"><span class="l-tb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 001.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/></svg>파란 카드 = 교과서 · 읽고 지켜보기</span><span class="l-wb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg>초록 카드 = 실험관찰 · 내가 직접 해 보기</span></div>
     <p>교과서는 결과를 예상하고 3D 실험을 지켜본 뒤 날개를 들어 정답을 확인해요. 실험관찰은 직접 끌고 눌러 실험하고, 관찰 기록지를 체크하거나 가림막을 열어 정리해요.</p>
   </header>
 
@@ -63,18 +76,21 @@ footer{font-size:13px; color:var(--mute); line-height:1.7}
     <h2 id="l1"><span class="num">1</span>서로 다른 물질을 섞으면 어떻게 될까?</h2>
     <div class="grid">
       <a class="card lab wide" href="lesson1-stations/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg><b>특별 활동</b><small>더 해 보기</small></span>
         <span class="kind">모둠 순환 실험 · 한 사람씩 해 보기</span>
         <span class="title">일곱 가지 물질 섞기 실험실</span>
         <span class="desc">식초·석회수·우유·생석회·아이오딘 용액 등을 섞어 보며 색 변화, 기포, 흐려짐·덩어리, 온도 변화를 관찰하고 설탕물과 비교해요.</span>
         <span class="go">실험실 들어가기 →</span>
       </a>
-      <a class="card" href="lesson1-textbook/">
-        <span class="kind">과학 교과서 38~39쪽</span>
+      <a class="card tb" href="lesson1-textbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 001.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/></svg><b>교과서</b><small>읽고 지켜보기</small></span>
+        <span class="kind">과학 38~39쪽</span>
         <span class="title">밀가루와 탄산수소 나트륨을 식초에 넣으면</span>
         <span class="desc">풍선을 세우면 한쪽은 이산화 탄소로 부풀고, 다른 쪽은 다시 처져요.</span>
         <span class="go">펼쳐 보기 →</span>
       </a>
       <a class="card wb" href="lesson1-workbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg><b>실험관찰</b><small>내가 직접 해 보기</small></span>
         <span class="kind">실험관찰 22~23쪽 · 직접 해 보기</span>
         <span class="title">가루 넣기부터 풍선 세우기까지</span>
         <span class="desc">깔때기로 가루를 넣고, 식초를 기준선까지 붓고, 두 풍선을 동시에 세워요.</span>
@@ -86,13 +102,15 @@ footer{font-size:13px; color:var(--mute); line-height:1.7}
   <section aria-labelledby="l2">
     <h2 id="l2"><span class="num">2</span>물질이 탈 때 어떤 현상이 나타날까?</h2>
     <div class="grid">
-      <a class="card" href="lesson2-textbook/">
-        <span class="kind">과학 교과서 40~41쪽</span>
+      <a class="card tb" href="lesson2-textbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 001.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/></svg><b>교과서</b><small>읽고 지켜보기</small></span>
+        <span class="kind">과학 40~41쪽</span>
         <span class="title">양초와 알코올이 탈 때 나오는 빛과 열</span>
         <span class="desc">두 불꽃을 비교하고, 빛과 열이 퍼져 나가는 흐름을 눈으로 봐요.</span>
         <span class="go">펼쳐 보기 →</span>
       </a>
       <a class="card wb" href="lesson2-workbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg><b>실험관찰</b><small>내가 직접 해 보기</small></span>
         <span class="kind">실험관찰 24~25쪽 · 직접 해 보기</span>
         <span class="title">안전 점검부터 불 끄기까지</span>
         <span class="desc">양초와 알코올램프에 불을 붙이고, 불꽃·따뜻함·시간 변화를 관찰해요.</span>
@@ -104,19 +122,22 @@ footer{font-size:13px; color:var(--mute); line-height:1.7}
   <section aria-labelledby="l3">
     <h2 id="l3"><span class="num">3</span>물질이 타려면 무엇이 필요할까?</h2>
     <div class="grid">
-      <a class="card" href="lesson3-textbook/">
-        <span class="kind">과학 교과서 42~44쪽</span>
+      <a class="card tb" href="lesson3-textbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 001.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/></svg><b>교과서</b><small>읽고 지켜보기</small></span>
+        <span class="kind">과학 42~44쪽</span>
         <span class="title">산소의 영향과 온도의 영향</span>
         <span class="desc">아크릴 통 속 두 촛불을 비교하고, 철판 위 성냥 머리와 나무 중 무엇에 먼저 불이 붙는지 지켜봐요.</span>
         <span class="go">펼쳐 보기 →</span>
       </a>
       <a class="card wb" href="lesson3-workbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg><b>실험관찰</b><small>내가 직접 해 보기</small></span>
         <span class="kind">실험관찰 26~27쪽 · 직접 해 보기</span>
         <span class="title">비커 준비부터 철판 가열까지</span>
         <span class="desc">과산화 수소수를 붓고, 두 통을 동시에 덮고, 성냥 조각을 같은 거리에 놓아 가열해요.</span>
         <span class="go">실험하러 가기 →</span>
       </a>
       <a class="card lab wide" href="lesson3-fire/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg><b>특별 활동</b><small>더 해 보기</small></span>
         <span class="kind">핵심 정리 · 과학 44쪽</span>
         <span class="title">연소의 조건 모으기</span>
         <span class="desc">떠다니는 것 중 탈 물질, 산소, 발화점 이상의 온도를 골라 모으면 가운데에 불이 붙고 「연소의 조건」 글자가 떠올라요. 하나씩 빼 보며 불이 꺼지는 까닭을 확인해요.</span>
@@ -128,13 +149,15 @@ footer{font-size:13px; color:var(--mute); line-height:1.7}
   <section aria-labelledby="l4">
     <h2 id="l4"><span class="num">4</span>연소 후의 변화가 궁금해!</h2>
     <div class="grid">
-      <a class="card" href="lesson4-textbook/">
-        <span class="kind">과학 교과서 46~47쪽</span>
+      <a class="card tb" href="lesson4-textbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5a1.5 1.5 0 001.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/></svg><b>교과서</b><small>읽고 지켜보기</small></span>
+        <span class="kind">과학 46~47쪽</span>
         <span class="title">연소 후 생성되는 물과 이산화 탄소</span>
         <span class="desc">푸른색 염화 코발트 종이가 붉게 변하고 석회수가 뿌옇게 흐려지는 것을, 생성된 물질 알갱이와 함께 지켜봐요.</span>
         <span class="go">펼쳐 보기 →</span>
       </a>
       <a class="card wb" href="lesson4-workbook/">
+        <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></svg><b>실험관찰</b><small>내가 직접 해 보기</small></span>
         <span class="kind">실험관찰 28~29쪽 · 직접 해 보기</span>
         <span class="title">종이 붙이기부터 석회수 흔들기까지</span>
         <span class="desc">핀셋으로 종이를 붙이고, 촛불을 덮고, 석회수 병의 뚜껑을 닫아 직접 흔들어 변화를 관찰해요.</span>
